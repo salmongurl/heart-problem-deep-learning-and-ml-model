@@ -1,355 +1,383 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect } from "react";
+import { predictRiskWithML, predictRiskWithDeepLearning, HealthInputs } from "../lib/riskModels";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  type HealthInputs,
-  predictRiskWithDeepLearning,
-  predictRiskWithML,
-  warmupDeepModel,
-} from "@/lib/riskModels";
+  Heart,
+  Droplet,
+  Activity,
+  User,
+  Cigarette,
+  Scale,
+  Brain,
+  Info
+} from "lucide-react";
+import clsx from "clsx";
 
-type NumericInputKey = Exclude<keyof HealthInputs, "smoker" | "diabetic">;
+export default function DiagnosticsPage() {
+  const [inputs, setInputs] = useState<HealthInputs>({
+    age: 45,
+    bloodPressure: 120,
+    cholesterol: 200,
+    bmi: 25,
+    isSmoker: false,
+    hasDiabetes: false,
+    physicalActivity: 3,
+  });
 
-type PredictionRecord = {
-  createdAt: string;
-  finalRisk: number;
-  mlRisk: number;
-  deepRisk: number;
-};
+  const [mlRisk, setMlRisk] = useState<number | null>(null);
+  const [dlRisk, setDlRisk] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [modelType] = useState<"ml" | "dl" | "both">("both");
+  const [isCalculated, setIsCalculated] = useState(false);
 
-const numericInputConfig: Array<{
-  key: NumericInputKey;
-  label: string;
-  min: number;
-  max: number;
-  step: number;
-}> = [
-  { key: "age", label: "Age", min: 18, max: 100, step: 1 },
-  {
-    key: "restingHeartRate",
-    label: "Resting Heart Rate (bpm)",
-    min: 40,
-    max: 160,
-    step: 1,
-  },
-  {
-    key: "systolicBP",
-    label: "Systolic Blood Pressure",
-    min: 80,
-    max: 220,
-    step: 1,
-  },
-  {
-    key: "diastolicBP",
-    label: "Diastolic Blood Pressure",
-    min: 45,
-    max: 140,
-    step: 1,
-  },
-  { key: "bmi", label: "BMI", min: 14, max: 45, step: 0.1 },
-  {
-    key: "glucose",
-    label: "Fasting Glucose (mg/dL)",
-    min: 60,
-    max: 320,
-    step: 1,
-  },
-  {
-    key: "cholesterol",
-    label: "Cholesterol (mg/dL)",
-    min: 90,
-    max: 420,
-    step: 1,
-  },
-  { key: "sleepHours", label: "Sleep (hours)", min: 3, max: 11, step: 0.1 },
-  {
-    key: "activityMinutes",
-    label: "Daily Activity (minutes)",
-    min: 0,
-    max: 240,
-    step: 1,
-  },
-];
-
-const initialInputs: HealthInputs = {
-  age: 46,
-  restingHeartRate: 76,
-  systolicBP: 132,
-  diastolicBP: 84,
-  bmi: 27.1,
-  glucose: 118,
-  cholesterol: 206,
-  sleepHours: 6.3,
-  activityMinutes: 35,
-  smoker: false,
-  diabetic: false,
-};
-
-const toPercent = (riskScore: number) => Math.round(riskScore * 1000) / 10;
-
-function riskBand(riskScore: number): "Low" | "Moderate" | "High" {
-  if (riskScore < 0.35) {
-    return "Low";
-  }
-
-  if (riskScore < 0.65) {
-    return "Moderate";
-  }
-
-  return "High";
-}
-
-function buildRecommendations(inputs: HealthInputs, riskScore: number): string[] {
-  const advice: string[] = [];
-
-  if (inputs.activityMinutes < 30) {
-    advice.push("Increase movement to at least 30-45 minutes of brisk activity.");
-  }
-  if (inputs.sleepHours < 7) {
-    advice.push("Aim for 7-8 hours of quality sleep to improve recovery.");
-  }
-  if (inputs.systolicBP > 130 || inputs.diastolicBP > 85) {
-    advice.push("Track blood pressure daily and reduce sodium in meals.");
-  }
-  if (inputs.glucose > 110) {
-    advice.push("Limit refined sugar and request fasting glucose follow-up testing.");
-  }
-  if (inputs.cholesterol > 200) {
-    advice.push("Increase soluble fiber and discuss lipid profile monitoring.");
-  }
-  if (inputs.smoker) {
-    advice.push("Start a smoke-cessation plan to reduce cardiovascular load.");
-  }
-  if (inputs.diabetic) {
-    advice.push("Maintain strict glucose logging and medication adherence.");
-  }
-  if (riskScore > 0.7) {
-    advice.push("High predicted risk: consult a clinician for full cardiac screening.");
-  }
-
-  return advice.length > 0
-    ? advice
-    : ["Current trend looks stable. Keep routine screening and healthy habits."];
-}
-
-export default function Home() {
-  const [inputs, setInputs] = useState<HealthInputs>(initialInputs);
-  const [isModelReady, setIsModelReady] = useState(false);
-  const [isPredicting, setIsPredicting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [records, setRecords] = useState<PredictionRecord[]>([]);
-
+  // Auto-calculate risk when inputs change quietly
   useEffect(() => {
-    let active = true;
-
-    warmupDeepModel()
-      .then(() => {
-        if (active) {
-          setIsModelReady(true);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setError("Deep model warm-up failed. You can still use ML estimation.");
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const latest = records[0];
-
-  const recommendations = useMemo(() => {
-    if (!latest) {
-      return ["Run your first prediction to get personalized guidance."];
+    if (isCalculated) {
+      handlePredict();
     }
+  }, [inputs]);
 
-    return buildRecommendations(inputs, latest.finalRisk);
-  }, [inputs, latest]);
+  const handlePredict = async () => {
+    setLoading(true);
+    try {
+      if (modelType === "both" || modelType === "ml") {
+        setMlRisk(predictRiskWithML(inputs));
+      } else {
+        setMlRisk(null);
+      }
 
-  const updateNumericInput = (key: NumericInputKey, raw: string) => {
-    const nextValue = Number(raw);
-
-    if (Number.isNaN(nextValue)) {
-      return;
+      if (modelType === "both" || modelType === "dl") {
+        const deepRisk = await predictRiskWithDeepLearning(inputs);
+        setDlRisk(deepRisk);
+      } else {
+        setDlRisk(null);
+      }
+      setIsCalculated(true);
+    } catch (e) {
+      console.error(e);
+      alert("Error estimating risk.");
+    } finally {
+      setLoading(false);
     }
-
-    setInputs((previous) => ({
-      ...previous,
-      [key]: nextValue,
-    }));
   };
 
-  const runPrediction = async () => {
-    setIsPredicting(true);
-    setError(null);
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>, key: keyof HealthInputs) => {
+    setInputs(prev => ({ ...prev, [key]: Number(e.target.value) }));
+  };
 
-    try {
-      const mlRisk = predictRiskWithML(inputs);
-      const deepRisk = isModelReady
-        ? await predictRiskWithDeepLearning(inputs)
-        : mlRisk;
-      const finalRisk = mlRisk * 0.45 + deepRisk * 0.55;
+  const toggleBoolean = (key: keyof HealthInputs) => {
+    setInputs(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
-      setRecords((previous) => [
-        {
-          createdAt: new Date().toLocaleTimeString(),
-          finalRisk,
-          mlRisk,
-          deepRisk,
-        },
-        ...previous,
-      ]);
-    } catch {
-      setError("Prediction failed. Please retry in a moment.");
-    } finally {
-      setIsPredicting(false);
-    }
+  const getRiskColor = (risk: number) => {
+    if (risk < 0.25) return "#2a9d8f"; // Green
+    if (risk < 0.5) return "#e9c46a"; // Yellow
+    if (risk < 0.75) return "#f4a261"; // Orange
+    return "#e76f51"; // Red
+  };
+
+  const CircularProgress = ({ value, label }: { value: number | null, label: string }) => {
+    if (value === null) return null;
+    const radius = 45;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - value * circumference;
+    const color = getRiskColor(value);
+
+    return (
+      <div className="flex flex-col items-center justify-center p-4">
+        <div className="relative w-32 h-32 flex items-center justify-center">
+          <svg className="w-full h-full transform -rotate-90">
+            <circle
+              className="text-gray-200"
+              strokeWidth="8"
+              stroke="currentColor"
+              fill="transparent"
+              r={radius}
+              cx="64"
+              cy="64"
+            />
+            <motion.circle
+              strokeWidth="8"
+              strokeDasharray={circumference}
+              strokeDashoffset={circumference}
+              strokeLinecap="round"
+              stroke={color}
+              fill="transparent"
+              r={radius}
+              cx="64"
+              cy="64"
+              animate={{ strokeDashoffset: offset }}
+              transition={{ duration: 1.5, ease: "easeOut" }}
+            />
+          </svg>
+          <div className="absolute text-2xl font-bold" style={{ color }}>
+            {Math.round(value * 100)}<span className="text-sm shadow-sm">%</span>
+          </div>
+        </div>
+        <div className="mt-2 text-sm font-semibold text-gray-600 uppercase tracking-widest">{label}</div>
+      </div>
+    );
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden px-4 py-8 sm:px-6 lg:px-12">
-      <div className="ambient-bg" aria-hidden="true" />
-      <main className="mx-auto grid w-full max-w-7xl gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <section className="glass-panel p-6 sm:p-8">
-          <p className="eyebrow">AI Health Console</p>
-          <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight sm:text-5xl">
-            Health Tracking with ML + Deep Learning Risk Prediction
+    <div className="min-h-screen py-12 px-4 sm:px-6 flex flex-col items-center">
+      <div className="ambient-bg" />
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-4xl z-10 space-y-8"
+      >
+        <div className="text-center space-y-2">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="w-16 h-16 bg-white/50 backdrop-blur rounded-2xl flex items-center justify-center mx-auto shadow-sm mb-4"
+          >
+            <Heart className="w-8 h-8 text-rose-500" />
+          </motion.div>
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-gray-900">
+            CardioRisk <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-emerald-500">AI</span>
           </h1>
-          <p className="mt-4 max-w-2xl text-sm text-slate-700 sm:text-base">
-            Enter your daily metrics to estimate cardiovascular risk probability.
-            The score combines a classical ML estimator and a neural network model
-            trained in-browser on synthetic clinical patterns.
+          <p className="text-gray-600 font-medium max-w-lg mx-auto">
+            Advanced neural networks and machine learning combined to analyze your cardiovascular profile.
           </p>
+        </div>
 
-          <div className="mt-7 grid gap-4 sm:grid-cols-2">
-            {numericInputConfig.map((field) => (
-              <label className="field" key={field.key}>
-                <span>{field.label}</span>
-                <input
-                  type="number"
-                  value={inputs[field.key]}
-                  min={field.min}
-                  max={field.max}
-                  step={field.step}
-                  onChange={(event) =>
-                    updateNumericInput(field.key, event.currentTarget.value)
-                  }
-                />
-              </label>
-            ))}
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              className={`toggle ${inputs.smoker ? "is-active" : ""}`}
-              onClick={() =>
-                setInputs((previous) => ({ ...previous, smoker: !previous.smoker }))
-              }
-            >
-              Smoker: {inputs.smoker ? "Yes" : "No"}
-            </button>
-            <button
-              type="button"
-              className={`toggle ${inputs.diabetic ? "is-active" : ""}`}
-              onClick={() =>
-                setInputs((previous) => ({
-                  ...previous,
-                  diabetic: !previous.diabetic,
-                }))
-              }
-            >
-              Diabetic: {inputs.diabetic ? "Yes" : "No"}
-            </button>
-          </div>
-
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={runPrediction}
-              className="action-btn"
-              disabled={isPredicting}
-            >
-              {isPredicting ? "Predicting..." : "Predict Risk"}
-            </button>
-            <p className="text-sm text-slate-700">
-              Deep Model: {isModelReady ? "Ready" : "Warming up..."}
-            </p>
-          </div>
-
-          {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
-        </section>
-
-        <section className="grid gap-6">
-          <article className="glass-panel p-6 sm:p-7">
-            <p className="eyebrow">Latest Assessment</p>
-            {latest ? (
-              <>
-                <h2 className="mt-3 text-4xl font-semibold">
-                  {toPercent(latest.finalRisk)}%
-                </h2>
-                <p className="mt-2 text-lg text-slate-700">
-                  {riskBand(latest.finalRisk)} Risk
-                </p>
-                <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-                  <div className="stat-chip">
-                    <span>ML</span>
-                    <strong>{toPercent(latest.mlRisk)}%</strong>
+        <div className="grid md:grid-cols-12 gap-6 relative">
+          
+          {/* Inputs Section */}
+          <div className="md:col-span-7 space-y-6">
+            <div className="glass-panel p-6 sm:p-8 space-y-8">
+              <h2 className="text-xl font-bold flex items-center gap-2 border-b border-gray-200/50 pb-4">
+                <User className="w-5 h-5 text-teal-600" /> Vitals & Metrics
+              </h2>
+              
+              {/* Sliders Grid */}
+              <div className="grid grid-cols-1 gap-8">
+                
+                {/* Age */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-bold flex items-center gap-2 text-gray-700">
+                      Age
+                    </label>
+                    <span className="text-lg font-bold text-teal-600 bg-teal-50 px-3 py-1 rounded-lg">
+                      {inputs.age} <span className="text-xs text-teal-800 font-normal">yrs</span>
+                    </span>
                   </div>
-                  <div className="stat-chip">
-                    <span>Deep</span>
-                    <strong>{toPercent(latest.deepRisk)}%</strong>
-                  </div>
+                  <input
+                    type="range"
+                    min="18"
+                    max="100"
+                    value={inputs.age}
+                    onChange={(e) => handleSliderChange(e, "age")}
+                    className="range-slider"
+                  />
                 </div>
-              </>
-            ) : (
-              <p className="mt-4 text-sm text-slate-700">
-                No prediction yet. Fill values and run the model.
-              </p>
-            )}
-          </article>
 
-          <article className="glass-panel p-6 sm:p-7">
-            <p className="eyebrow">Trend</p>
-            <div className="mt-4 space-y-3">
-              {records.length === 0 ? (
-                <p className="text-sm text-slate-700">
-                  Trend appears after the first run.
-                </p>
-              ) : (
-                records.slice(0, 5).map((record) => (
-                  <div key={`${record.createdAt}-${record.finalRisk}`}>
-                    <div className="mb-1 flex justify-between text-xs text-slate-600">
-                      <span>{record.createdAt}</span>
-                      <span>{toPercent(record.finalRisk)}%</span>
-                    </div>
-                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-300/60">
-                      <div
-                        className="h-full rounded-full bg-[var(--accent)]"
-                        style={{ width: `${Math.max(4, toPercent(record.finalRisk))}%` }}
-                      />
-                    </div>
+                {/* Blood Pressure */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-bold flex items-center gap-2 text-gray-700">
+                      <Activity className="w-4 h-4 text-rose-500" /> Blood Pressure
+                    </label>
+                    <span className="text-lg font-bold text-rose-600 bg-rose-50 px-3 py-1 rounded-lg">
+                      {inputs.bloodPressure} <span className="text-xs text-rose-800 font-normal">mmHg</span>
+                    </span>
                   </div>
-                ))
-              )}
-            </div>
-          </article>
+                  <input
+                    type="range"
+                    min="80"
+                    max="200"
+                    value={inputs.bloodPressure}
+                    onChange={(e) => handleSliderChange(e, "bloodPressure")}
+                    className="range-slider"
+                  />
+                </div>
 
-          <article className="glass-panel p-6 sm:p-7">
-            <p className="eyebrow">Recommendations</p>
-            <ul className="mt-4 space-y-3 text-sm text-slate-800">
-              {recommendations.map((tip) => (
-                <li key={tip} className="rounded-xl bg-white/65 px-3 py-2">
-                  {tip}
-                </li>
-              ))}
-            </ul>
-          </article>
-        </section>
-      </main>
+                {/* Cholesterol */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-bold flex items-center gap-2 text-gray-700">
+                      <Droplet className="w-4 h-4 text-amber-500" /> Cholesterol
+                    </label>
+                    <span className="text-lg font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-lg">
+                      {inputs.cholesterol} <span className="text-xs text-amber-800 font-normal">mg/dL</span>
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="120"
+                    max="350"
+                    value={inputs.cholesterol}
+                    onChange={(e) => handleSliderChange(e, "cholesterol")}
+                    className="range-slider"
+                  />
+                </div>
+
+                {/* BMI */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-bold flex items-center gap-2 text-gray-700">
+                      <Scale className="w-4 h-4 text-indigo-500" /> BMI
+                    </label>
+                    <span className="text-lg font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg">
+                      {inputs.bmi.toFixed(1)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="15"
+                    max="50"
+                    step="0.1"
+                    value={inputs.bmi}
+                    onChange={(e) => handleSliderChange(e, "bmi")}
+                    className="range-slider"
+                  />
+                </div>
+
+              </div>
+            </div>
+
+            <div className="glass-panel p-6 sm:p-8 space-y-6">
+              <h2 className="text-xl font-bold flex items-center gap-2 border-b border-gray-200/50 pb-4">
+                <Info className="w-5 h-5 text-teal-600" /> Lifestyle Factors
+              </h2>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => toggleBoolean("isSmoker")}
+                  className={clsx(
+                    "toggle-btn flex flex-col items-center justify-center gap-2 h-24",
+                    inputs.isSmoker ? "is-active border-rose-400 bg-rose-50" : "hover:bg-gray-50 text-gray-500"
+                  )}
+                >
+                  <Cigarette className={clsx("w-6 h-6", inputs.isSmoker ? "text-rose-500" : "")} />
+                  <span>Smoker</span>
+                </button>
+
+                <button
+                  onClick={() => toggleBoolean("hasDiabetes")}
+                  className={clsx(
+                    "toggle-btn flex flex-col items-center justify-center gap-2 h-24",
+                    inputs.hasDiabetes ? "is-active border-amber-400 bg-amber-50" : "hover:bg-gray-50 text-gray-500"
+                  )}
+                >
+                  <Activity className={clsx("w-6 h-6", inputs.hasDiabetes ? "text-amber-500" : "")} />
+                  <span>Diabetes History</span>
+                </button>
+              </div>
+
+              <div className="space-y-3 pt-4 border-t border-gray-100">
+                 <div className="flex justify-between items-center">
+                    <label className="text-sm font-bold flex items-center gap-2 text-gray-700">
+                      Physical Activity Rating (0-5)
+                    </label>
+                    <span className="text-lg font-bold text-teal-600">
+                      {inputs.physicalActivity} / 5
+                    </span>
+                 </div>
+                 <div className="flex justify-between gap-2">
+                   {[0, 1, 2, 3, 4, 5].map((val) => (
+                     <button
+                       key={val}
+                       onClick={() => setInputs(prev => ({ ...prev, physicalActivity: val }))}
+                       className={clsx(
+                         "flex-1 py-2 rounded-lg text-sm font-bold transition-all",
+                         inputs.physicalActivity === val
+                           ? "bg-teal-500 text-white shadow-md transform -translate-y-1"
+                           : "bg-white/50 text-gray-500 hover:bg-white"
+                       )}
+                     >
+                       {val}
+                     </button>
+                   ))}
+                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Results Section */}
+          <div className="md:col-span-5 relative">
+            <div className="glass-panel p-6 sm:p-8 sticky top-6 flex flex-col h-full bg-gradient-to-b from-white/80 to-teal-50/40">
+              
+              <div className="flex-1 flex flex-col justify-center items-center text-center space-y-6">
+                {!isCalculated ? (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-6 w-full"
+                  >
+                    <Brain className="w-20 h-20 text-teal-200 mx-auto" strokeWidth={1} />
+                    <h3 className="text-2xl font-black text-gray-800">Ready to Analyze</h3>
+                    <p className="text-gray-500 text-sm">
+                      Adjust your vitals and run the diagnostic models to see your risk profile.
+                    </p>
+                    <button
+                      onClick={handlePredict}
+                      disabled={loading}
+                      className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-white font-black text-lg shadow-xl shadow-teal-500/30 transform transition hover:-translate-y-1 active:scale-95 disabled:opacity-50"
+                    >
+                      {loading ? "Analyzing..." : "Run AI Diagnostics"}
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="w-full flex justify-center mt-3"
+                  >
+                    <button
+                      onClick={handlePredict}
+                      disabled={loading}
+                      style={{
+                         padding: "1rem"
+                      }}
+                      className="w-full py-4 text-center rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-white font-black text-lg shadow-xl shadow-teal-500/30 transform transition hover:-translate-y-1 active:scale-95 disabled:opacity-50"
+                    >
+                       {loading ? "Recalculating..." : "? Recalculate"}
+                    </button>
+                  </motion.div>
+                )}
+                
+                <AnimatePresence>
+                  {isCalculated && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="w-full space-y-6 mt-8 p-3"
+                    >
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white/60 rounded-2xl shadow-sm border border-gray-100/50 p-2">
+                           <CircularProgress value={mlRisk} label="Classic ML" />
+                        </div>
+                        <div className="bg-white/60 rounded-2xl shadow-sm border border-gray-100/50 p-2 relative overflow-hidden">
+                           <div className="absolute top-2 right-2 flex gap-1">
+                             <div className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
+                             <div className="w-2 h-2 rounded-full bg-teal-400 animate-pulse delay-75" />
+                           </div>
+                           <CircularProgress value={dlRisk} label="Deep Neural Net" />
+                        </div>
+                      </div>
+
+                      <div className="text-left bg-teal-50/50 p-4 rounded-xl text-sm text-teal-900 border border-teal-100">
+                        <strong className="block mb-1 text-teal-800 flex items-center gap-2">
+                          <Brain className="w-4 h-4" /> AI Insight
+                        </strong>
+                        The Neural Network (Deep Learning) accounts for complex non-linear interactions across your metrics, often providing a more nuanced risk score than classical algorithms.
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
