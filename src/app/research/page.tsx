@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Database, Network, LineChart, Cpu, BookOpen } from "lucide-react";
+import { Database, Network, LineChart, Cpu, BookOpen, Activity } from "lucide-react";
 
 export default function ResearchPage() {
   const container = {

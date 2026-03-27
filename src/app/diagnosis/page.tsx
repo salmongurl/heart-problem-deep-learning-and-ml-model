@@ -15,8 +15,18 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 
+interface UIInputs {
+  age: number;
+  bloodPressure: number;
+  cholesterol: number;
+  bmi: number;
+  isSmoker: boolean;
+  hasDiabetes: boolean;
+  physicalActivity: number;
+}
+
 export default function DiagnosticsPage() {
-  const [inputs, setInputs] = useState<HealthInputs>({
+  const [inputs, setInputs] = useState<UIInputs>({
     age: 45,
     bloodPressure: 120,
     cholesterol: 200,
@@ -42,14 +52,28 @@ export default function DiagnosticsPage() {
   const handlePredict = async () => {
     setLoading(true);
     try {
+      const mappedInputs: HealthInputs = {
+        age: inputs.age,
+        restingHeartRate: 70,
+        systolicBP: inputs.bloodPressure,
+        diastolicBP: 80,
+        bmi: inputs.bmi,
+        glucose: inputs.hasDiabetes ? 140 : 90,
+        cholesterol: inputs.cholesterol,
+        sleepHours: 7,
+        activityMinutes: inputs.physicalActivity * 30,
+        smoker: inputs.isSmoker,
+        diabetic: inputs.hasDiabetes,
+      };
+
       if (modelType === "both" || modelType === "ml") {
-        setMlRisk(predictRiskWithML(inputs));
+        setMlRisk(predictRiskWithML(mappedInputs));
       } else {
         setMlRisk(null);
       }
 
       if (modelType === "both" || modelType === "dl") {
-        const deepRisk = await predictRiskWithDeepLearning(inputs);
+        const deepRisk = await predictRiskWithDeepLearning(mappedInputs);
         setDlRisk(deepRisk);
       } else {
         setDlRisk(null);
@@ -63,12 +87,12 @@ export default function DiagnosticsPage() {
     }
   };
 
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>, key: keyof HealthInputs) => {
-    setInputs(prev => ({ ...prev, [key]: Number(e.target.value) }));
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>, key: keyof UIInputs) => {
+    setInputs((prev: UIInputs) => ({ ...prev, [key]: Number(e.target.value) }));
   };
 
-  const toggleBoolean = (key: keyof HealthInputs) => {
-    setInputs(prev => ({ ...prev, [key]: !prev[key] }));
+  const toggleBoolean = (key: keyof UIInputs) => {
+    setInputs((prev: UIInputs) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const getRiskColor = (risk: number) => {
@@ -282,7 +306,7 @@ export default function DiagnosticsPage() {
                    {[0, 1, 2, 3, 4, 5].map((val) => (
                      <button
                        key={val}
-                       onClick={() => setInputs(prev => ({ ...prev, physicalActivity: val }))}
+                       onClick={() => setInputs((prev: UIInputs) => ({ ...prev, physicalActivity: val }))}
                        className={clsx(
                          "flex-1 py-2 rounded-lg text-sm font-bold transition-all",
                          inputs.physicalActivity === val
