@@ -45,6 +45,11 @@ export default function DiagnosticsPage() {
   const [loading, setLoading] = useState(false);
   const [modelType] = useState<"ml" | "dl" | "both">("both");
   const [isCalculated, setIsCalculated] = useState(false);
+  const [compareMode, setCompareMode] = useState({
+    sleepHours: 8,
+    activityMinutes: 150,
+    quitSmoking: true,
+  });
 
   const toHealthInputs = (currentInputs: UIInputs): HealthInputs => ({
     age: currentInputs.age,
@@ -64,6 +69,30 @@ export default function DiagnosticsPage() {
   const liveRisk = useMemo(
     () => predictRiskWithML(liveMappedInputs),
     [liveMappedInputs],
+  );
+
+  const improvedMappedInputs = useMemo(() => {
+    const improvedActivity = Math.max(
+      liveMappedInputs.activityMinutes,
+      compareMode.activityMinutes,
+    );
+
+    return {
+      ...liveMappedInputs,
+      sleepHours: compareMode.sleepHours,
+      activityMinutes: improvedActivity,
+      smoker: compareMode.quitSmoking ? false : liveMappedInputs.smoker,
+    };
+  }, [liveMappedInputs, compareMode]);
+
+  const improvedRisk = useMemo(
+    () => predictRiskWithML(improvedMappedInputs),
+    [improvedMappedInputs],
+  );
+
+  const projectedImprovement = useMemo(
+    () => Math.max(0, liveRisk - improvedRisk),
+    [liveRisk, improvedRisk],
   );
 
   // Auto-calculate risk when inputs change quietly
@@ -177,6 +206,125 @@ export default function DiagnosticsPage() {
               Updates Live
             </div>
           </div>
+        </div>
+      </div>
+    );
+  };
+
+  const CompareModePanel = () => {
+    const currentColor = getRiskColor(liveRisk);
+    const improvedColor = getRiskColor(improvedRisk);
+
+    return (
+      <div className="w-full rounded-3xl border border-rose-100/60 bg-white/70 p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-black tracking-wide text-gray-700 uppercase">
+            Compare Mode
+          </h3>
+          <span className="text-xs font-bold px-2 py-1 rounded-full bg-rose-50 text-rose-700">
+            Current vs Improved
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-gray-100 bg-white/80 p-3 text-left">
+            <p className="text-[11px] uppercase tracking-wider text-gray-500 font-bold">
+              Your Current Profile
+            </p>
+            <p className="text-2xl font-black mt-1" style={{ color: currentColor }}>
+              {Math.round(liveRisk * 100)}%
+            </p>
+            <p className="text-xs font-semibold text-gray-500 mt-1">
+              {getRiskLabel(liveRisk)} risk
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-3 text-left">
+            <p className="text-[11px] uppercase tracking-wider text-rose-600 font-bold">
+              Improved Profile
+            </p>
+            <p className="text-2xl font-black mt-1" style={{ color: improvedColor }}>
+              {Math.round(improvedRisk * 100)}%
+            </p>
+            <p className="text-xs font-semibold text-rose-700 mt-1">
+              {getRiskLabel(improvedRisk)} risk
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-xs text-emerald-800 font-semibold">
+          Projected improvement: {Math.round(projectedImprovement * 100)} points
+        </div>
+
+        <div className="space-y-3 pt-1 text-left">
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                Improved Sleep
+              </label>
+              <span className="text-xs font-bold text-rose-700">
+                {compareMode.sleepHours} hrs/night
+              </span>
+            </div>
+            <input
+              type="range"
+              min="4"
+              max="10"
+              step="1"
+              value={compareMode.sleepHours}
+              onChange={(e) =>
+                setCompareMode((prev) => ({
+                  ...prev,
+                  sleepHours: Number(e.target.value),
+                }))
+              }
+              className="range-slider"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                Weekly Activity Target
+              </label>
+              <span className="text-xs font-bold text-rose-700">
+                {compareMode.activityMinutes} min/week
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="300"
+              step="15"
+              value={compareMode.activityMinutes}
+              onChange={(e) =>
+                setCompareMode((prev) => ({
+                  ...prev,
+                  activityMinutes: Number(e.target.value),
+                }))
+              }
+              className="range-slider"
+            />
+          </div>
+
+          <button
+            onClick={() =>
+              setCompareMode((prev) => ({
+                ...prev,
+                quitSmoking: !prev.quitSmoking,
+              }))
+            }
+            className={clsx(
+              "w-full rounded-xl border px-3 py-2 text-xs font-bold transition-colors",
+              compareMode.quitSmoking
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50",
+            )}
+          >
+            {compareMode.quitSmoking
+              ? "Improved profile assumes smoking stopped"
+              : "Keep smoking status same as current"}
+          </button>
         </div>
       </div>
     );
@@ -446,6 +594,7 @@ export default function DiagnosticsPage() {
             <div className="glass-panel p-6 sm:p-8 sticky top-6 flex flex-col h-full bg-gradient-to-b from-white/80 to-rose-50/40">
               <div className="flex-1 flex flex-col justify-center items-center text-center space-y-6">
                 <LiveRiskDial value={liveRisk} />
+                <CompareModePanel />
 
                 {!isCalculated ? (
                   <motion.div
