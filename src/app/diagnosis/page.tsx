@@ -50,6 +50,7 @@ export default function DiagnosticsPage() {
     activityMinutes: 150,
     quitSmoking: true,
   });
+  const [timelineYear, setTimelineYear] = useState(0);
 
   const toHealthInputs = (currentInputs: UIInputs): HealthInputs => ({
     age: currentInputs.age,
@@ -94,6 +95,73 @@ export default function DiagnosticsPage() {
     () => Math.max(0, liveRisk - improvedRisk),
     [liveRisk, improvedRisk],
   );
+
+  const clampRisk = (value: number) => Math.max(0.02, Math.min(0.98, value));
+
+  const projectedRiskAtYear = (
+    baseRisk: number,
+    profile: HealthInputs,
+    year: number,
+  ) => {
+    if (year === 0) return clampRisk(baseRisk);
+
+    const ageDrift = year * 0.015;
+    const pressureDrift = ((profile.systolicBP - 120) / 180) * 0.12 * (year / 10);
+    const cholesterolDrift =
+      ((profile.cholesterol - 180) / 220) * 0.1 * (year / 10);
+    const diabeticDrift = profile.diabetic ? 0.01 * year : 0;
+    const smokingDrift = profile.smoker ? 0.012 * year : 0;
+    const activityProtection =
+      ((profile.activityMinutes - 90) / 210) * 0.14 * (year / 10);
+    const sleepProtection = ((profile.sleepHours - 7) / 3) * 0.06 * (year / 10);
+
+    return clampRisk(
+      baseRisk +
+        ageDrift +
+        pressureDrift +
+        cholesterolDrift +
+        diabeticDrift +
+        smokingDrift -
+        activityProtection -
+        sleepProtection,
+    );
+  };
+
+  const currentTimeline = useMemo(
+    () =>
+      Array.from({ length: 11 }, (_, year) =>
+        projectedRiskAtYear(liveRisk, liveMappedInputs, year),
+      ),
+    [liveRisk, liveMappedInputs],
+  );
+
+  const improvedTimeline = useMemo(
+    () =>
+      Array.from({ length: 11 }, (_, year) =>
+        projectedRiskAtYear(improvedRisk, improvedMappedInputs, year),
+      ),
+    [improvedRisk, improvedMappedInputs],
+  );
+
+  const timelineMilestone = useMemo(() => {
+    const currentAtYear = currentTimeline[timelineYear];
+    const improvedAtYear = improvedTimeline[timelineYear];
+    const benefit = currentAtYear - improvedAtYear;
+
+    if (timelineYear === 0) {
+      return "Baseline year: this is your current starting risk profile.";
+    }
+    if (timelineYear <= 2) {
+      return "Early adaptation phase: consistency in sleep/activity builds protective momentum.";
+    }
+    if (benefit > 0.12) {
+      return "Strong divergence milestone: improved habits are producing a meaningful long-term risk gap.";
+    }
+    if (benefit > 0.06) {
+      return "Moderate improvement milestone: projected risk is trending better than your current profile.";
+    }
+    return "Long-horizon check: maintain routine changes to widen this projected gap over time.";
+  }, [timelineYear, currentTimeline, improvedTimeline]);
 
   // Auto-calculate risk when inputs change quietly
   useEffect(() => {
@@ -325,6 +393,73 @@ export default function DiagnosticsPage() {
               ? "Improved profile assumes smoking stopped"
               : "Keep smoking status same as current"}
           </button>
+        </div>
+
+        <div className="rounded-2xl border border-gray-100 bg-white/80 p-4 space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <h4 className="text-xs font-black tracking-wide text-gray-700 uppercase">
+              What-if Timeline Scrubber
+            </h4>
+            <span className="text-xs font-bold text-rose-700">
+              Year {timelineYear}
+            </span>
+          </div>
+
+          <input
+            type="range"
+            min="0"
+            max="10"
+            step="1"
+            value={timelineYear}
+            onChange={(e) => setTimelineYear(Number(e.target.value))}
+            className="range-slider"
+          />
+
+          <div className="flex justify-between text-[10px] font-bold text-gray-400 px-0.5">
+            {Array.from({ length: 11 }, (_, y) => (
+              <span key={y}>{y}</span>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <motion.div
+              key={`current-${timelineYear}`}
+              initial={{ opacity: 0.6, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl border border-gray-100 bg-white p-3"
+            >
+              <p className="text-[11px] uppercase tracking-wider text-gray-500 font-bold">
+                Current at Year {timelineYear}
+              </p>
+              <p
+                className="text-xl font-black mt-1"
+                style={{ color: getRiskColor(currentTimeline[timelineYear]) }}
+              >
+                {Math.round(currentTimeline[timelineYear] * 100)}%
+              </p>
+            </motion.div>
+
+            <motion.div
+              key={`improved-${timelineYear}`}
+              initial={{ opacity: 0.6, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl border border-rose-100 bg-rose-50/70 p-3"
+            >
+              <p className="text-[11px] uppercase tracking-wider text-rose-600 font-bold">
+                Improved at Year {timelineYear}
+              </p>
+              <p
+                className="text-xl font-black mt-1"
+                style={{ color: getRiskColor(improvedTimeline[timelineYear]) }}
+              >
+                {Math.round(improvedTimeline[timelineYear] * 100)}%
+              </p>
+            </motion.div>
+          </div>
+
+          <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 text-xs text-blue-900 font-medium leading-relaxed">
+            {timelineMilestone}
+          </div>
         </div>
       </div>
     );
