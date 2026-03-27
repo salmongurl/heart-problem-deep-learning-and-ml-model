@@ -24,8 +24,8 @@ export default function PredictionPage() {
   };
 
   return (
-    <div className="min-h-screen py-8 px-4 sm:px-6 flex flex-col items-center max-w-5xl mx-auto w-full">
-      <div className="w-full space-y-8">
+    <div className="min-h-screen py-8 px-4 sm:px-6 flex flex-col items-center max-w-5xl mx-auto w-full pointer-events-none">
+      <div className="w-full space-y-8 pointer-events-auto">
         
         <div className="text-center space-y-4 max-w-2xl mx-auto">
           <div className="w-16 h-16 bg-white/50 backdrop-blur rounded-2xl flex items-center justify-center mx-auto shadow-sm">

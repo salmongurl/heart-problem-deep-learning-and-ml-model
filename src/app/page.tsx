@@ -21,12 +21,12 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-5xl mx-auto min-h-[80vh]">
+    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-5xl mx-auto min-h-[80vh] pointer-events-none">
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="space-y-12"
+        className="space-y-12 pointer-events-auto"
       >
         <motion.div variants={itemVariants} className="space-y-6">
           <div className="inline-flex items-center gap-2 bg-rose-50/80 border border-rose-100 text-rose-900 px-4 py-2 rounded-full font-bold text-sm shadow-sm backdrop-blur">

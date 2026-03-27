@@ -15,8 +15,8 @@ export default function ResearchPage() {
   };
 
   return (
-    <div className="min-h-screen py-8 px-4 sm:px-6 flex flex-col items-center max-w-5xl mx-auto w-full">
-      <div className="text-center space-y-4 max-w-2xl mx-auto mb-10">
+    <div className="min-h-screen py-8 px-4 sm:px-6 flex flex-col items-center max-w-5xl mx-auto w-full pointer-events-none">
+      <div className="text-center space-y-4 max-w-2xl mx-auto mb-10 pointer-events-auto">
         <div className="w-16 h-16 bg-white/50 backdrop-blur rounded-2xl flex items-center justify-center mx-auto shadow-sm">
           <BookOpen className="w-8 h-8 text-indigo-500" />
         </div>
@@ -32,7 +32,7 @@ export default function ResearchPage() {
         variants={container}
         initial="hidden"
         animate="show"
-        className="w-full space-y-6"
+        className="w-full space-y-6 pointer-events-auto"
       >
         <motion.div variants={item} className="grid md:grid-cols-2 gap-6">
           <div className="glass-panel p-8 group hover:bg-white/80 transition-colors">

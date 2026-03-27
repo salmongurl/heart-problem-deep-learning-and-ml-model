@@ -35,8 +35,10 @@ export default function RootLayout({
         <BiologicalHeart />
         <div className="ambient-bg" />
         <Navbar />
-        <main className="flex-1 flex flex-col relative z-10 w-full">
-          {children}
+        <main className="flex-1 flex flex-col relative z-10 w-full pointer-events-none">
+          <div className="flex-1 flex flex-col pointer-events-auto">
+            {children}
+          </div>
         </main>
       </body>
     </html>

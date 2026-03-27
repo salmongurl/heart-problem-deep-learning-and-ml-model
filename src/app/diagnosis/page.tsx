@@ -122,11 +122,11 @@ export default function DiagnosticsPage() {
   };
 
   return (
-    <div className="min-h-screen py-4 px-4 sm:px-6 flex flex-col items-center">
+    <div className="min-h-screen py-4 px-4 sm:px-6 flex flex-col items-center pointer-events-none">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-4xl z-10 space-y-8"
+        className="w-full max-w-4xl z-10 space-y-8 pointer-events-auto"
       >
         <div className="text-center space-y-2">
           <motion.div
