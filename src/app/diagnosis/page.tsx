@@ -137,7 +137,7 @@ export default function DiagnosticsPage() {
             <Heart className="w-8 h-8 text-rose-500" />
           </motion.div>
           <h1 className="text-4xl md:text-5xl font-black tracking-tight text-gray-900">
-            CardioRisk <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-emerald-500">AI</span>
+            CardioRisk <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-red-600">AI</span>
           </h1>
           <p className="text-gray-600 font-medium max-w-lg mx-auto">
             Advanced neural networks and machine learning combined to analyze your cardiovascular profile.
@@ -150,7 +150,7 @@ export default function DiagnosticsPage() {
           <div className="md:col-span-7 space-y-6">
             <div className="glass-panel p-6 sm:p-8 space-y-8">
               <h2 className="text-xl font-bold flex items-center gap-2 border-b border-gray-200/50 pb-4">
-                <User className="w-5 h-5 text-teal-600" /> Vitals & Metrics
+                <User className="w-5 h-5 text-rose-700" /> Vitals & Metrics
               </h2>
               
               {/* Sliders Grid */}
@@ -162,8 +162,8 @@ export default function DiagnosticsPage() {
                     <label className="text-sm font-bold flex items-center gap-2 text-gray-700">
                       Age
                     </label>
-                    <span className="text-lg font-bold text-teal-600 bg-teal-50 px-3 py-1 rounded-lg">
-                      {inputs.age} <span className="text-xs text-teal-800 font-normal">yrs</span>
+                    <span className="text-lg font-bold text-rose-700 bg-rose-50 px-3 py-1 rounded-lg">
+                      {inputs.age} <span className="text-xs text-rose-900 font-normal">yrs</span>
                     </span>
                   </div>
                   <input
@@ -242,7 +242,7 @@ export default function DiagnosticsPage() {
 
             <div className="glass-panel p-6 sm:p-8 space-y-6">
               <h2 className="text-xl font-bold flex items-center gap-2 border-b border-gray-200/50 pb-4">
-                <Info className="w-5 h-5 text-teal-600" /> Lifestyle Factors
+                <Info className="w-5 h-5 text-rose-700" /> Lifestyle Factors
               </h2>
               
               <div className="grid grid-cols-2 gap-4">
@@ -274,7 +274,7 @@ export default function DiagnosticsPage() {
                     <label className="text-sm font-bold flex items-center gap-2 text-gray-700">
                       Physical Activity Rating (0-5)
                     </label>
-                    <span className="text-lg font-bold text-teal-600">
+                    <span className="text-lg font-bold text-rose-700">
                       {inputs.physicalActivity} / 5
                     </span>
                  </div>
@@ -286,7 +286,7 @@ export default function DiagnosticsPage() {
                        className={clsx(
                          "flex-1 py-2 rounded-lg text-sm font-bold transition-all",
                          inputs.physicalActivity === val
-                           ? "bg-teal-500 text-white shadow-md transform -translate-y-1"
+                           ? "bg-rose-600 text-white shadow-md transform -translate-y-1"
                            : "bg-white/50 text-gray-500 hover:bg-white"
                        )}
                      >
@@ -300,7 +300,7 @@ export default function DiagnosticsPage() {
 
           {/* Results Section */}
           <div className="md:col-span-5 relative">
-            <div className="glass-panel p-6 sm:p-8 sticky top-6 flex flex-col h-full bg-gradient-to-b from-white/80 to-teal-50/40">
+            <div className="glass-panel p-6 sm:p-8 sticky top-6 flex flex-col h-full bg-gradient-to-b from-white/80 to-rose-50/40">
               
               <div className="flex-1 flex flex-col justify-center items-center text-center space-y-6">
                 {!isCalculated ? (
@@ -309,7 +309,7 @@ export default function DiagnosticsPage() {
                     animate={{ opacity: 1 }}
                     className="space-y-6 w-full"
                   >
-                    <Brain className="w-20 h-20 text-teal-200 mx-auto" strokeWidth={1} />
+                    <Brain className="w-20 h-20 text-rose-200 mx-auto" strokeWidth={1} />
                     <h3 className="text-2xl font-black text-gray-800">Ready to Analyze</h3>
                     <p className="text-gray-500 text-sm">
                       Adjust your vitals and run the diagnostic models to see your risk profile.
@@ -317,7 +317,7 @@ export default function DiagnosticsPage() {
                     <button
                       onClick={handlePredict}
                       disabled={loading}
-                      className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-white font-black text-lg shadow-xl shadow-teal-500/30 transform transition hover:-translate-y-1 active:scale-95 disabled:opacity-50"
+                      className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-lg shadow-xl shadow-rose-600/30 transform transition hover:-translate-y-1 active:scale-95 disabled:opacity-50"
                     >
                       {loading ? "Analyzing..." : "Run AI Diagnostics"}
                     </button>
@@ -334,7 +334,7 @@ export default function DiagnosticsPage() {
                       style={{
                          padding: "1rem"
                       }}
-                      className="w-full py-4 text-center rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-white font-black text-lg shadow-xl shadow-teal-500/30 transform transition hover:-translate-y-1 active:scale-95 disabled:opacity-50"
+                      className="w-full py-4 text-center rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-lg shadow-xl shadow-rose-600/30 transform transition hover:-translate-y-1 active:scale-95 disabled:opacity-50"
                     >
                        {loading ? "Recalculating..." : "? Recalculate"}
                     </button>
@@ -355,14 +355,14 @@ export default function DiagnosticsPage() {
                         <div className="bg-white/60 rounded-2xl shadow-sm border border-gray-100/50 p-2 relative overflow-hidden">
                            <div className="absolute top-2 right-2 flex gap-1">
                              <div className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
-                             <div className="w-2 h-2 rounded-full bg-teal-400 animate-pulse delay-75" />
+                             <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse delay-75" />
                            </div>
                            <CircularProgress value={dlRisk} label="Deep Neural Net" />
                         </div>
                       </div>
 
-                      <div className="text-left bg-teal-50/50 p-4 rounded-xl text-sm text-teal-900 border border-teal-100">
-                        <strong className="block mb-1 text-teal-800 flex items-center gap-2">
+                      <div className="text-left bg-rose-50/50 p-4 rounded-xl text-sm text-rose-950 border border-rose-100">
+                        <strong className="block mb-1 text-rose-900 flex items-center gap-2">
                           <Brain className="w-4 h-4" /> AI Insight
                         </strong>
                         The Neural Network (Deep Learning) accounts for complex non-linear interactions across your metrics, often providing a more nuanced risk score than classical algorithms.

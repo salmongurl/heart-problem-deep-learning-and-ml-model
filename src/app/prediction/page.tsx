@@ -43,7 +43,7 @@ export default function PredictionPage() {
           <div className="flex flex-col md:flex-row gap-8 items-center justify-between border-b border-gray-200/50 pb-8 mb-8">
             <div className="space-y-2">
               <h2 className="text-xl font-bold flex items-center gap-2">
-                <BrainCircuit className="w-5 h-5 text-teal-600" /> Forecasting Engine
+                <BrainCircuit className="w-5 h-5 text-rose-700" /> Forecasting Engine
               </h2>
               <p className="text-sm text-gray-500 max-w-sm">
                 Runs 10,000 Monte Carlo simulations using Next-Gen Deep Learning models.
@@ -89,7 +89,7 @@ export default function PredictionPage() {
                 <div key={index} className="flex flex-col items-center relative z-10 w-full group">
                   <span className={clsx(
                      "font-bold text-sm mb-2 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8",
-                     isHigh ? "text-rose-600" : "text-teal-600"
+                     isHigh ? "text-rose-600" : "text-rose-700"
                   )}>
                     {risk.toFixed(1)}%
                   </span>
@@ -99,7 +99,7 @@ export default function PredictionPage() {
                     transition={{ duration: 0.8, delay: index * 0.1, type: "spring", stiffness: 100 }}
                     className={clsx(
                       "w-12 sm:w-16 rounded-t-lg relative overflow-hidden",
-                      isHigh ? "bg-gradient-to-t from-rose-400 to-rose-500" : "bg-gradient-to-t from-teal-400 to-emerald-400"
+                      isHigh ? "bg-gradient-to-t from-rose-400 to-rose-500" : "bg-gradient-to-t from-rose-500 to-red-500"
                     )}
                     style={{ minHeight: "20px", height: '0%' }}
                   >

@@ -37,8 +37,8 @@ export default function ResearchPage() {
         <motion.div variants={item} className="grid md:grid-cols-2 gap-6">
           <div className="glass-panel p-8 group hover:bg-white/80 transition-colors">
             <div className="flex items-center gap-4 mb-4">
-              <div className="p-3 bg-teal-50 rounded-xl">
-                <LineChart className="w-6 h-6 text-teal-600" />
+              <div className="p-3 bg-rose-50 rounded-xl">
+                <LineChart className="w-6 h-6 text-rose-700" />
               </div>
               <h2 className="text-xl font-bold text-gray-800">Classical ML (Logistic Regression)</h2>
             </div>

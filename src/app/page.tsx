@@ -29,7 +29,7 @@ export default function HomePage() {
         className="space-y-12"
       >
         <motion.div variants={itemVariants} className="space-y-6">
-          <div className="inline-flex items-center gap-2 bg-teal-50/80 border border-teal-100 text-teal-800 px-4 py-2 rounded-full font-bold text-sm shadow-sm backdrop-blur">
+          <div className="inline-flex items-center gap-2 bg-rose-50/80 border border-rose-100 text-rose-900 px-4 py-2 rounded-full font-bold text-sm shadow-sm backdrop-blur">
             <span className="relative flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
@@ -39,7 +39,7 @@ export default function HomePage() {
           
           <h1 className="text-5xl md:text-7xl font-black tracking-tight text-gray-900 leading-tight font-headline">
             The Future of <br className="hidden md:block"/> 
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-600 via-red-600 to-rose-700">
               Cardiac Health Risk
             </span>
           </h1>
@@ -51,13 +51,13 @@ export default function HomePage() {
 
         <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link href="/diagnosis" className="group relative w-full sm:w-auto">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-teal-400 to-emerald-400 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-300"></div>
-            <button className="relative w-full sm:w-auto bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-8 py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform shadow-xl">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-rose-500 to-red-500 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-300"></div>
+            <button className="relative w-full sm:w-auto bg-gradient-to-r from-rose-600 to-red-600 text-white px-8 py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform shadow-xl">
               Get Started <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </Link>
           <Link href="/research">
-            <button className="w-full sm:w-auto px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 text-teal-800 bg-white/50 backdrop-blur hover:bg-white/80 border border-teal-100/50 transition-all">
+            <button className="w-full sm:w-auto px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 text-rose-900 bg-white/50 backdrop-blur hover:bg-white/80 border border-rose-100/50 transition-all">
               <BrainCircuit className="w-5 h-5" /> Read the Research
             </button>
           </Link>
