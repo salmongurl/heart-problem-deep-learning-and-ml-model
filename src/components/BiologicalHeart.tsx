@@ -29,8 +29,34 @@ function CustomGLTFHeart() {
       Math.sin(t * Math.PI * 2 * bpmModifier) * 0.05 +
       Math.sin(t * Math.PI * bpmModifier) * 0.02;
     const scale = 1 + pulse;
+    const cursorX = state.mouse.x;
+    const cursorY = state.mouse.y;
+    const targetRotY = Math.sin(t * 0.5) * 0.15 + cursorX * 0.35;
+    const targetRotX = -cursorY * 0.2;
+    const targetPosX = cursorX * 0.35;
+    const targetPosY = cursorY * 0.2;
+
     meshRef.current.scale.set(scale, scale, scale);
-    meshRef.current.rotation.y = Math.sin(t * 0.5) * 0.15;
+    meshRef.current.rotation.y = THREE.MathUtils.lerp(
+      meshRef.current.rotation.y,
+      targetRotY,
+      0.08,
+    );
+    meshRef.current.rotation.x = THREE.MathUtils.lerp(
+      meshRef.current.rotation.x,
+      targetRotX,
+      0.08,
+    );
+    meshRef.current.position.x = THREE.MathUtils.lerp(
+      meshRef.current.position.x,
+      targetPosX,
+      0.08,
+    );
+    meshRef.current.position.y = THREE.MathUtils.lerp(
+      meshRef.current.position.y,
+      targetPosY,
+      0.08,
+    );
   });
 
   return (
@@ -93,8 +119,34 @@ function ProceduralFallbackHeart() {
       Math.sin(t * Math.PI * 2 * bpmModifier) * 0.05 +
       Math.sin(t * Math.PI * bpmModifier) * 0.02;
     const scale = 1 + pulse;
+    const cursorX = state.mouse.x;
+    const cursorY = state.mouse.y;
+    const targetRotY = Math.sin(t * 0.5) * 0.15 + cursorX * 0.35;
+    const targetRotX = -cursorY * 0.2;
+    const targetPosX = cursorX * 0.35;
+    const targetPosY = cursorY * 0.2;
+
     meshRef.current.scale.set(scale, scale, scale);
-    meshRef.current.rotation.y = Math.sin(t * 0.5) * 0.15;
+    meshRef.current.rotation.y = THREE.MathUtils.lerp(
+      meshRef.current.rotation.y,
+      targetRotY,
+      0.08,
+    );
+    meshRef.current.rotation.x = THREE.MathUtils.lerp(
+      meshRef.current.rotation.x,
+      targetRotX,
+      0.08,
+    );
+    meshRef.current.position.x = THREE.MathUtils.lerp(
+      meshRef.current.position.x,
+      targetPosX,
+      0.08,
+    );
+    meshRef.current.position.y = THREE.MathUtils.lerp(
+      meshRef.current.position.y,
+      targetPosY,
+      0.08,
+    );
     meshRef.current.rotation.z = Math.cos(t * 0.3) * 0.08;
   });
 
