@@ -4,7 +4,6 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   BrainCircuit,
-  HeartPulse,
   Activity,
   ArrowRight,
   ActivitySquare,
@@ -119,12 +118,6 @@ export default function HomePage() {
           </motion.div>
         </div>
 
-        <motion.div
-          variants={itemVariants}
-          className="hidden xl:flex items-end justify-end h-full"
-        >
-          <div className="w-full max-w-md h-[520px] rounded-3xl border border-rose-200/30 bg-gradient-to-br from-white/10 via-rose-100/5 to-transparent backdrop-blur-[2px]" />
-        </motion.div>
       </motion.div>
     </div>
   );
