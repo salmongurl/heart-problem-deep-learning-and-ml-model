@@ -152,7 +152,10 @@ export default function BiologicalHeart() {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none flex items-center justify-center xl:justify-end xl:pr-[10%] pt-20">
+    <div
+      className="fixed inset-0 z-0 pointer-events-none flex items-center justify-center xl:justify-end xl:pr-[10%] pt-20"
+      style={{ transform: "translateX(4cm)" }}
+    >
       <div className="w-[100vw] h-[70vh] xl:w-[900px] xl:h-[900px] pointer-events-auto">
         <Canvas camera={{ position: [0, 0, 8], fov: 45 }} shadows dpr={[1, 2]}>
           <ambientLight intensity={0.6} />
