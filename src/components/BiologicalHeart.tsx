@@ -15,8 +15,8 @@ import * as THREE from "three";
 // 1. THIS IS THE COMPONENT THAT LOADS YOUR CUSTOM 3D MODEL (.glb)
 function CustomGLTFHeart() {
   // To use this:
-  // Place your downloaded model inside the 'public' folder and name it 'heart.glb'
-  const { scene } = useGLTF("/heart.glb");
+  // Place your downloaded model inside the 'public' folder as 'realistic_human_heart.glb'
+  const { scene } = useGLTF("/realistic_human_heart.glb");
   const meshRef = useRef<THREE.Group>(null);
   const [clicks, setClicks] = useState(0);
 
@@ -143,10 +143,10 @@ function ProceduralFallbackHeart() {
 export default function BiologicalHeart() {
   const [modelExists, setModelExists] = useState(false);
 
-  // We check if "heart.glb" is available online.
+  // We check if "realistic_human_heart.glb" is available online.
   // If not, we fall back to the procedural code.
   useMemo(() => {
-    fetch("/heart.glb", { method: "HEAD" })
+    fetch("/realistic_human_heart.glb", { method: "HEAD" })
       .then((res) => setModelExists(res.ok))
       .catch(() => setModelExists(false));
   }, []);
