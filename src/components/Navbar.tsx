@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { HeartPulse, Activity, BrainCircuit, BookOpen, Home } from "lucide-react";
+import {
+  HeartPulse,
+  Activity,
+  BrainCircuit,
+  BookOpen,
+  Home,
+} from "lucide-react";
 import clsx from "clsx";
 
 export default function Navbar() {
@@ -23,9 +29,11 @@ export default function Navbar() {
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center shadow-inner shadow-rose-900/20">
             <HeartPulse className="w-5 h-5 text-white" />
           </div>
-          <span className="font-extrabold tracking-tight text-gray-800 hidden sm:block font-headline">CardioRisk</span>
+          <span className="font-extrabold tracking-tight text-gray-800 hidden sm:block font-headline">
+            CardioRisk
+          </span>
         </div>
-        
+
         {links.map((link) => {
           const isActive = pathname === link.href;
           return (
@@ -34,7 +42,9 @@ export default function Navbar() {
               href={link.href}
               className={clsx(
                 "relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-sm font-bold transition-colors",
-                isActive ? "text-rose-950" : "text-gray-500 hover:text-gray-900 hover:bg-gray-50/50"
+                isActive
+                  ? "text-rose-950"
+                  : "text-gray-500 hover:text-gray-900 hover:bg-gray-50/50",
               )}
             >
               {isActive && (
@@ -45,7 +55,9 @@ export default function Navbar() {
                 />
               )}
               <link.icon className="w-4 h-4 relative z-10" />
-              <span className="relative z-10 hidden sm:block">{link.label}</span>
+              <span className="relative z-10 hidden sm:block">
+                {link.label}
+              </span>
             </Link>
           );
         })}

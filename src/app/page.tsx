@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BrainCircuit, HeartPulse, Activity, ArrowRight, ActivitySquare } from "lucide-react";
+import {
+  BrainCircuit,
+  HeartPulse,
+  Activity,
+  ArrowRight,
+  ActivitySquare,
+} from "lucide-react";
 
 export default function HomePage() {
   const containerVariants = {
@@ -10,14 +16,14 @@ export default function HomePage() {
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.2
-      }
-    }
+        staggerChildren: 0.2,
+      },
+    },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
+    show: { opacity: 1, y: 0 },
   };
 
   return (
@@ -36,24 +42,29 @@ export default function HomePage() {
             </span>
             Powered by TensorFlow.js & Classic ML
           </div>
-          
+
           <h1 className="text-5xl md:text-7xl font-black tracking-tight text-gray-900 leading-tight font-headline">
-            The Future of <br className="hidden md:block"/> 
+            The Future of <br className="hidden md:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-600 via-red-600 to-rose-700">
               Cardiac Health Risk
             </span>
           </h1>
-          
+
           <p className="text-lg md:text-xl text-gray-600 font-medium max-w-2xl mx-auto leading-relaxed">
-            Harness the power of AI to analyze your vitals, detect patterns, and anticipate cardiovascular risks with our dual-network approach.
+            Harness the power of AI to analyze your vitals, detect patterns, and
+            anticipate cardiovascular risks with our dual-network approach.
           </p>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <motion.div
+          variants={itemVariants}
+          className="flex flex-col sm:flex-row items-center justify-center gap-4"
+        >
           <Link href="/diagnosis" className="group relative w-full sm:w-auto">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-rose-500 to-red-500 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-300"></div>
             <button className="relative w-full sm:w-auto bg-gradient-to-r from-rose-600 to-red-600 text-white px-8 py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform shadow-xl">
-              Get Started <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              Get Started{" "}
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </Link>
           <Link href="/research">
@@ -63,33 +74,44 @@ export default function HomePage() {
           </Link>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12">
+        <motion.div
+          variants={itemVariants}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12"
+        >
           {[
             {
               title: "Diagnostic Tools",
               desc: "Input real-time vitals into our interactive UI.",
               icon: <Activity className="w-6 h-6 text-rose-500" />,
-              link: "/diagnosis"
+              link: "/diagnosis",
             },
             {
               title: "ML Predictions",
               desc: "View future health trajectories over 10 years.",
               icon: <ActivitySquare className="w-6 h-6 text-amber-500" />,
-              link: "/prediction"
+              link: "/prediction",
             },
             {
               title: "Neural Networks",
               desc: "Learn about the TensorFlow model architectures.",
               icon: <BrainCircuit className="w-6 h-6 text-indigo-500" />,
-              link: "/research"
-            }
+              link: "/research",
+            },
           ].map((feature, i) => (
-            <Link key={i} href={feature.link} className="glass-panel p-6 text-left group hover:bg-white/80 transition-all cursor-pointer">
+            <Link
+              key={i}
+              href={feature.link}
+              className="glass-panel p-6 text-left group hover:bg-white/80 transition-all cursor-pointer"
+            >
               <div className="w-12 h-12 bg-white/60 rounded-xl flex items-center justify-center mb-4 shadow-sm border border-gray-100 group-hover:scale-110 transition-transform">
                 {feature.icon}
               </div>
-              <h3 className="font-bold text-lg mb-2 text-gray-800">{feature.title}</h3>
-              <p className="text-gray-500 text-sm font-medium">{feature.desc}</p>
+              <h3 className="font-bold text-lg mb-2 text-gray-800">
+                {feature.title}
+              </h3>
+              <p className="text-gray-500 text-sm font-medium">
+                {feature.desc}
+              </p>
             </Link>
           ))}
         </motion.div>
