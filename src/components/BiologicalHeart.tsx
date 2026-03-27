@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import {
   Float,
@@ -10,15 +10,25 @@ import {
   OrbitControls,
   useGLTF,
 } from "@react-three/drei";
+import { motion, AnimatePresence } from "framer-motion";
 import * as THREE from "three";
 
 // 1. THIS IS THE COMPONENT THAT LOADS YOUR CUSTOM 3D MODEL (.glb)
-function CustomGLTFHeart() {
+function CustomGLTFHeart({ onBurst }: { onBurst: () => void }) {
   // To use this:
   // Place your downloaded model inside the 'public' folder as 'realistic_human_heart.glb'
   const { scene } = useGLTF("/realistic_human_heart.glb");
   const meshRef = useRef<THREE.Group>(null);
   const [clicks, setClicks] = useState(0);
+
+  const handleHeartClick = (e: any) => {
+    e.stopPropagation();
+    setClicks((c) => {
+      const next = c >= 5 ? 0 : c + 1;
+      if (next === 5) onBurst();
+      return next;
+    });
+  };
 
   // Still want it to beat? We animate the scale of the entire loaded scene
   useFrame((state) => {
@@ -61,21 +71,20 @@ function CustomGLTFHeart() {
 
   return (
     <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
-      <group
-        ref={meshRef}
-        onClick={(e) => {
-          e.stopPropagation();
-          setClicks((c) => (c >= 5 ? 0 : c + 1));
-        }}
-      >
+      <group ref={meshRef}>
         <primitive object={scene} scale={2.8} position={[0, 0, 0]} />
+        {/* Invisible collider makes click detection reliable across complex GLB meshes. */}
+        <mesh onClick={handleHeartClick}>
+          <sphereGeometry args={[3, 32, 32]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
       </group>
     </Float>
   );
 }
 
 // 2. FALLBACK PROCEDURAL HEART (until you add the .glb file)
-function ProceduralFallbackHeart() {
+function ProceduralFallbackHeart({ onBurst }: { onBurst: () => void }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHover] = useState(false);
   const [clicks, setClicks] = useState(0);
@@ -157,7 +166,11 @@ function ProceduralFallbackHeart() {
         geometry={heartGeometry}
         onClick={(e) => {
           e.stopPropagation();
-          setClicks((c) => (c >= 5 ? 0 : c + 1));
+          setClicks((c) => {
+            const next = c >= 5 ? 0 : c + 1;
+            if (next === 5) onBurst();
+            return next;
+          });
         }}
         onPointerOver={() => setHover(true)}
         onPointerOut={() => setHover(false)}
@@ -194,6 +207,9 @@ function ProceduralFallbackHeart() {
 
 export default function BiologicalHeart() {
   const [modelExists, setModelExists] = useState(false);
+  const [burstId, setBurstId] = useState(0);
+  const [showBurst, setShowBurst] = useState(false);
+  const burstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // We check if "realistic_human_heart.glb" is available online.
   // If not, we fall back to the procedural code.
@@ -203,12 +219,97 @@ export default function BiologicalHeart() {
       .catch(() => setModelExists(false));
   }, []);
 
+  const triggerBurst = () => {
+    if (burstTimerRef.current) {
+      clearTimeout(burstTimerRef.current);
+    }
+    setBurstId((id) => id + 1);
+    setShowBurst(true);
+    burstTimerRef.current = setTimeout(() => {
+      setShowBurst(false);
+      burstTimerRef.current = null;
+    }, 1100);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
+    };
+  }, []);
+
   return (
     <div
       className="fixed inset-0 z-0 pointer-events-none flex items-center justify-center xl:justify-end xl:pr-[10%] pt-20"
       style={{ transform: "translateX(4cm)" }}
     >
       <div className="w-[100vw] h-[70vh] xl:w-[900px] xl:h-[900px] pointer-events-auto">
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+          <motion.div
+            className="absolute h-28 w-28 rounded-full border-2 border-rose-500/55"
+            animate={{ scale: [0.7, 2.8], opacity: [0.65, 0] }}
+            transition={{ duration: 1.6, ease: "easeOut", repeat: Infinity }}
+          />
+          <motion.div
+            className="absolute h-24 w-24 rounded-full border border-red-400/60"
+            animate={{ scale: [0.7, 3.5], opacity: [0.6, 0] }}
+            transition={{
+              duration: 1.6,
+              ease: "easeOut",
+              repeat: Infinity,
+              delay: 0.35,
+            }}
+          />
+        </div>
+
+        <AnimatePresence>
+          {showBurst ? (
+            <motion.div
+              key={`burst-${burstId}`}
+              className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+            >
+              <motion.div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(circle at center, rgba(239, 68, 68, 0.35) 0%, rgba(127, 29, 29, 0.2) 30%, rgba(0, 0, 0, 0) 70%)",
+                }}
+                initial={{ opacity: 0.75 }}
+                animate={{ opacity: 0 }}
+                transition={{ duration: 0.9, ease: "easeOut" }}
+              />
+              <motion.div
+                className="absolute rounded-full"
+                style={{
+                  width: "16rem",
+                  height: "16rem",
+                  background:
+                    "radial-gradient(circle, rgba(255, 56, 88, 0.55) 0%, rgba(220, 38, 38, 0.25) 45%, rgba(127, 29, 29, 0) 80%)",
+                  filter: "blur(3px)",
+                }}
+                initial={{ scale: 0.3, opacity: 0.95 }}
+                animate={{ scale: 2.8, opacity: 0 }}
+                transition={{ duration: 0.9, ease: "easeOut" }}
+              />
+              <motion.div
+                className="absolute h-28 w-28 rounded-full border-4 border-rose-500/75"
+                initial={{ scale: 0.35, opacity: 0.9 }}
+                animate={{ scale: 3.6, opacity: 0 }}
+                transition={{ duration: 1, ease: "easeOut" }}
+              />
+              <motion.div
+                className="absolute h-24 w-24 rounded-full border-2 border-red-400/70"
+                initial={{ scale: 0.35, opacity: 0.85 }}
+                animate={{ scale: 4.5, opacity: 0 }}
+                transition={{ duration: 1.15, ease: "easeOut", delay: 0.08 }}
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
         <Canvas camera={{ position: [0, 0, 8], fov: 45 }} shadows dpr={[1, 2]}>
           <ambientLight intensity={0.6} />
           <directionalLight position={[10, 10, 10]} intensity={2} castShadow />
@@ -219,7 +320,11 @@ export default function BiologicalHeart() {
           />
           <pointLight position={[0, 0, 5]} intensity={2} color="#ffebf0" />
 
-          {modelExists ? <CustomGLTFHeart /> : <ProceduralFallbackHeart />}
+          {modelExists ? (
+            <CustomGLTFHeart onBurst={triggerBurst} />
+          ) : (
+            <ProceduralFallbackHeart onBurst={triggerBurst} />
+          )}
 
           <ContactShadows
             position={[0, -3.5, 0]}
