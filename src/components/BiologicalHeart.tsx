@@ -42,7 +42,7 @@ function CustomGLTFHeart() {
           setClicks((c) => (c >= 5 ? 0 : c + 1));
         }}
       >
-        <primitive object={scene} scale={2} position={[0, 0, 0]} />
+        <primitive object={scene} scale={2.8} position={[0, 0, 0]} />
       </group>
     </Float>
   );
@@ -153,7 +153,7 @@ export default function BiologicalHeart() {
 
   return (
     <div className="fixed inset-0 z-0 pointer-events-none flex items-center justify-center xl:justify-end xl:pr-[10%] pt-20">
-      <div className="w-[100vw] h-[60vh] xl:w-[800px] xl:h-[800px] pointer-events-auto">
+      <div className="w-[100vw] h-[70vh] xl:w-[900px] xl:h-[900px] pointer-events-auto">
         <Canvas camera={{ position: [0, 0, 8], fov: 45 }} shadows dpr={[1, 2]}>
           <ambientLight intensity={0.6} />
           <directionalLight position={[10, 10, 10]} intensity={2} castShadow />
