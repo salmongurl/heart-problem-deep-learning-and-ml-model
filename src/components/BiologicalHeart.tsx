@@ -8,6 +8,7 @@ import {
   Environment,
   ContactShadows,
   OrbitControls,
+  Sparkles,
   useGLTF,
 } from "@react-three/drei";
 import { motion, AnimatePresence } from "framer-motion";
@@ -210,6 +211,18 @@ export default function BiologicalHeart() {
   const [burstId, setBurstId] = useState(0);
   const [showBurst, setShowBurst] = useState(false);
   const burstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sparkleNodes = useMemo(
+    () =>
+      Array.from({ length: 16 }, (_, i) => ({
+        id: i,
+        left: `${8 + ((i * 13) % 84)}%`,
+        top: `${10 + ((i * 17) % 78)}%`,
+        size: 4 + (i % 4),
+        delay: (i % 8) * 0.22,
+        duration: 1.8 + (i % 5) * 0.35,
+      })),
+    [],
+  );
 
   // We check if "realistic_human_heart.glb" is available online.
   // If not, we fall back to the procedural code.
@@ -243,6 +256,53 @@ export default function BiologicalHeart() {
       style={{ transform: "translateX(4cm)" }}
     >
       <div className="w-[100vw] h-[70vh] xl:w-[900px] xl:h-[900px] pointer-events-auto">
+        <div className="pointer-events-none absolute inset-0 z-[9] overflow-hidden">
+          <motion.div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(circle at 55% 48%, rgba(239, 68, 68, 0.24) 0%, rgba(136, 19, 55, 0.18) 34%, rgba(76, 5, 25, 0) 70%)",
+              mixBlendMode: "screen",
+            }}
+            animate={{ opacity: [0.35, 0.62, 0.35] }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(circle at 50% 50%, rgba(153, 27, 27, 0.2) 0%, rgba(127, 29, 29, 0.12) 42%, rgba(0, 0, 0, 0) 75%)",
+            }}
+            animate={{ opacity: [0.2, 0.45, 0.2], scale: [1, 1.03, 1] }}
+            transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+          />
+          {sparkleNodes.map((sparkle) => (
+            <motion.span
+              key={sparkle.id}
+              className="absolute rounded-full"
+              style={{
+                left: sparkle.left,
+                top: sparkle.top,
+                width: sparkle.size,
+                height: sparkle.size,
+                background: "rgba(255, 99, 132, 0.8)",
+                boxShadow: "0 0 10px rgba(244, 63, 94, 0.8)",
+              }}
+              animate={{
+                y: [0, -18, 0],
+                opacity: [0, 0.85, 0],
+                scale: [0.6, 1.1, 0.6],
+              }}
+              transition={{
+                duration: sparkle.duration,
+                delay: sparkle.delay,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            />
+          ))}
+        </div>
+
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
           <motion.div
             className="absolute h-28 w-28 rounded-full border-2 border-rose-500/55"
@@ -311,6 +371,7 @@ export default function BiologicalHeart() {
         </AnimatePresence>
 
         <Canvas camera={{ position: [0, 0, 8], fov: 45 }} shadows dpr={[1, 2]}>
+          <fog attach="fog" args={["#4a0010", 7, 20]} />
           <ambientLight intensity={0.6} />
           <directionalLight position={[10, 10, 10]} intensity={2} castShadow />
           <directionalLight
@@ -319,6 +380,25 @@ export default function BiologicalHeart() {
             color="#ffb3c6"
           />
           <pointLight position={[0, 0, 5]} intensity={2} color="#ffebf0" />
+
+          <Sparkles
+            count={180}
+            scale={[12, 9, 10]}
+            size={4.2}
+            speed={0.52}
+            noise={1.4}
+            color="#ff4d6d"
+            opacity={0.9}
+          />
+          <Sparkles
+            count={120}
+            scale={[10, 7, 8]}
+            size={3.1}
+            speed={0.28}
+            noise={1.8}
+            color="#b91c1c"
+            opacity={0.6}
+          />
 
           {modelExists ? (
             <CustomGLTFHeart onBurst={triggerBurst} />
