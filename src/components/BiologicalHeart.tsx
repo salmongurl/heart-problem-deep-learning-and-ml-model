@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useMemo, useEffect } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
 import {
   Float,
   MeshTransmissionMaterial,
@@ -22,7 +22,7 @@ function CustomGLTFHeart({ onBurst }: { onBurst: () => void }) {
   const meshRef = useRef<THREE.Group>(null);
   const [clicks, setClicks] = useState(0);
 
-  const handleHeartClick = (e: any) => {
+  const handleHeartClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
     setClicks((c) => {
       const next = c >= 5 ? 0 : c + 1;

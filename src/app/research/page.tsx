@@ -1,7 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Database, Network, LineChart, Cpu, BookOpen, Activity } from "lucide-react";
+import {
+  Database,
+  Network,
+  LineChart,
+  Cpu,
+  BookOpen,
+  Activity,
+} from "lucide-react";
 
 export default function ResearchPage() {
   const container = {
@@ -52,7 +59,7 @@ export default function ResearchPage() {
               Our baseline model utilizes a deterministic logistic regression
               approach. It applies generalized linear coefficients to input
               features such as age, BMI, and cholesterol to estimate
-              probability. It's fast, interpretable, and perfect for
+              probability. It&apos;s fast, interpretable, and perfect for
               understanding exactly how each metric contributes to the final
               score.
             </p>
