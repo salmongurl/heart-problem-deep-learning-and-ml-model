@@ -11,10 +11,12 @@ The app uses logistic regression trained from:
 Training script:
 
 - `scripts/train-risk-model.mjs`
+- `scripts/train-deep-model.mjs`
 
 Generated model artifact used by the website at runtime:
 
 - `src/lib/trainedHeartModel.ts`
+- `src/lib/trainedDeepHeartModel.ts`
 
 Current feature set used for training:
 
@@ -35,9 +37,10 @@ npm install
 
 ```bash
 npm run train:model
+npm run train:deep
 ```
 
-This updates `src/lib/trainedHeartModel.ts` with fresh coefficients and metadata.
+This updates `src/lib/trainedHeartModel.ts` and `src/lib/trainedDeepHeartModel.ts` with fresh weights and metadata.
 
 ## Run App
 

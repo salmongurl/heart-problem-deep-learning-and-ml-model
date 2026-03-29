@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "train:model": "node scripts/train-risk-model.mjs"
+    "train:model": "node scripts/train-risk-model.mjs",
+    "train:deep": "node scripts/train-deep-model.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

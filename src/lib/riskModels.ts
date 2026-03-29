@@ -1,4 +1,5 @@
 import { trainedHeartModel } from "./trainedHeartModel";
+import { trainedDeepHeartModel } from "./trainedDeepHeartModel";
 
 export type HealthInputs = {
   age: number;
@@ -18,6 +19,7 @@ const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
 const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
+const relu = (x: number) => (x > 0 ? x : 0);
 
 function baseDatasetProbability(inputs: HealthInputs): number {
   const fastingBS = Number(inputs.diabetic || inputs.glucose >= 120);
@@ -63,15 +65,64 @@ export async function warmupDeepModel(): Promise<void> {
   return;
 }
 
+function deepDatasetProbability(inputs: HealthInputs): number {
+  const fastingBS = Number(inputs.diabetic || inputs.glucose >= 120);
+  const rawFeatures = [inputs.age, inputs.systolicBP, inputs.cholesterol, fastingBS];
+
+  const x = rawFeatures.map((value, idx) => {
+    const mean = trainedDeepHeartModel.means[idx];
+    const std = trainedDeepHeartModel.stds[idx] || 1;
+    return (value - mean) / std;
+  });
+
+  const a1 = trainedDeepHeartModel.W1.map((row, rowIdx) => {
+    let z = trainedDeepHeartModel.b1[rowIdx];
+    for (let i = 0; i < row.length; i += 1) {
+      z += row[i] * x[i];
+    }
+    return relu(z);
+  });
+
+  const a2 = trainedDeepHeartModel.W2.map((row, rowIdx) => {
+    let z = trainedDeepHeartModel.b2[rowIdx];
+    for (let i = 0; i < row.length; i += 1) {
+      z += row[i] * a1[i];
+    }
+    return relu(z);
+  });
+
+  let z3 = trainedDeepHeartModel.b3;
+  for (let i = 0; i < trainedDeepHeartModel.W3.length; i += 1) {
+    z3 += trainedDeepHeartModel.W3[i] * a2[i];
+  }
+
+  return sigmoid(z3);
+}
+
 export async function predictRiskWithDeepLearning(
   inputs: HealthInputs,
 ): Promise<number> {
-  const baseRisk = riskScore(inputs);
-  const interaction =
-    0.22 * Number(inputs.smoker && inputs.diabetic) +
-    0.1 * clamp((inputs.systolicBP - 130) / 40, -0.4, 1) *
-      clamp((inputs.cholesterol - 210) / 100, -0.4, 1) -
-    0.1 * clamp(inputs.activityMinutes / 240, 0, 1.2);
+  const deepCore = deepDatasetProbability(inputs);
 
-  return clamp(0.72 * baseRisk + 0.28 * sigmoid(-1.05 + interaction), 0, 1);
+  // Same lifestyle calibration envelope used by the ML scorer, but with
+  // slightly stronger interaction effect for the deep model output.
+  const smokerBoost = inputs.smoker ? 0.1 : 0;
+  const bmiBoost = clamp((inputs.bmi - 27) / 34, -0.06, 0.15);
+  const sleepBoost = clamp((7 - inputs.sleepHours) / 18, -0.05, 0.08);
+  const inactivityBoost = clamp((120 - inputs.activityMinutes) / 390, -0.08, 0.11);
+  const glucoseBoost = clamp((inputs.glucose - 110) / 480, -0.02, 0.09);
+  const diabetesSmokerInteraction =
+    inputs.diabetic && inputs.smoker ? 0.03 : 0;
+
+  return clamp(
+    deepCore +
+      smokerBoost +
+      bmiBoost +
+      sleepBoost +
+      inactivityBoost +
+      glucoseBoost +
+      diabetesSmokerInteraction,
+    0,
+    1,
+  );
 }
