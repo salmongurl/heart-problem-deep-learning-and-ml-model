@@ -369,6 +369,17 @@ function computeAccuracy(samples, labels, weights, bias) {
   return correct / samples.length;
 }
 
+function scoreProbability(sample, weights, bias) {
+  return sigmoid(dot(weights, sample) + bias);
+}
+
+function normalizeWithBounds(values, normalization) {
+  return values.map((value, index) => {
+    const { min, max } = normalization[index];
+    return Math.max(0, Math.min(1, (value - min) / (max - min)));
+  });
+}
+
 function main() {
   const { input, output, label, epochs, learningRate } = parseArgs();
   const outputPath = path.resolve(process.cwd(), output);
@@ -449,6 +460,15 @@ function main() {
 
   const accuracy = computeAccuracy(normalizedSamples, labels, weights, bias);
 
+  // Clinical orientation check: adverse profile should score higher than healthy profile.
+  const healthyAnchor = [25, 58, 105, 68, 20, 90, 160, 8.5, 210, 0, 0];
+  const adverseAnchor = [75, 95, 190, 115, 38, 180, 420, 4.5, 20, 1, 1];
+  const healthyNorm = normalizeWithBounds(healthyAnchor, normalization);
+  const adverseNorm = normalizeWithBounds(adverseAnchor, normalization);
+  const healthyProb = scoreProbability(healthyNorm, weights, bias);
+  const adverseProb = scoreProbability(adverseNorm, weights, bias);
+  const invertOutput = adverseProb < healthyProb;
+
   const modelFile = {
     version: 1,
     trainedAt: new Date().toISOString(),
@@ -457,6 +477,7 @@ function main() {
     normalization,
     weights,
     bias,
+    invertOutput,
     training: {
       accuracy,
       loss,
@@ -471,6 +492,9 @@ function main() {
   console.log(`Model trained using ${normalizedSamples.length} rows.`);
   console.log(`Skipped rows: ${skippedRows}`);
   console.log(`Accuracy: ${(accuracy * 100).toFixed(2)}%`);
+  console.log(`Healthy anchor probability: ${healthyProb.toFixed(4)}`);
+  console.log(`Adverse anchor probability: ${adverseProb.toFixed(4)}`);
+  console.log(`Output inverted for risk semantics: ${invertOutput}`);
   console.log(`Saved to: ${outputPath}`);
 }
 

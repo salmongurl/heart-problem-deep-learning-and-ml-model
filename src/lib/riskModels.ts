@@ -23,6 +23,7 @@ type TrainedModel = {
   normalization?: { min: number; max: number }[];
   weights?: number[];
   bias?: number;
+  invertOutput?: boolean;
 };
 
 const toRawFeatureVector = (inputs: HealthInputs): number[] => [
@@ -55,6 +56,7 @@ const FALLBACK_NORMALIZATION = [
 
 const FALLBACK_WEIGHTS = [1.8, 1.4, 1.5, 1.2, 1.1, 1.7, 1.3, -0.9, -0.8, 1.9, 2.1];
 const FALLBACK_BIAS = -3.5;
+const FALLBACK_INVERT_OUTPUT = false;
 
 const normalizeFeature = (
   value: number,
@@ -86,11 +88,15 @@ const getModel = () => {
     weights: hasValidWeights ? safeModel.weights! : FALLBACK_WEIGHTS,
     bias: typeof safeModel.bias === "number" ? safeModel.bias : FALLBACK_BIAS,
     normalization: hasValidNorm ? safeModel.normalization! : FALLBACK_NORMALIZATION,
+    invertOutput:
+      typeof safeModel.invertOutput === "boolean"
+        ? safeModel.invertOutput
+        : FALLBACK_INVERT_OUTPUT,
   };
 };
 
 export function predictRiskWithML(inputs: HealthInputs): number {
-  const { weights, bias, normalization } = getModel();
+  const { weights, bias, normalization, invertOutput } = getModel();
   const features = toFeatureVector(inputs, normalization);
 
   let weightedSum = bias;
@@ -98,7 +104,9 @@ export function predictRiskWithML(inputs: HealthInputs): number {
     weightedSum += features[i] * weights[i];
   }
 
-  return clamp(sigmoid(weightedSum), 0, 1);
+  const probability = sigmoid(weightedSum);
+  const orientedRisk = invertOutput ? 1 - probability : probability;
+  return clamp(orientedRisk, 0, 1);
 }
 
 export async function warmupDeepModel(): Promise<void> {

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "trainedAt": "2026-03-29T07:05:44.077Z",
+  "trainedAt": "2026-03-29T07:13:11.128Z",
   "samples": 10947,
   "featureOrder": [
     "age",
@@ -75,6 +75,7 @@
     -0.10592961297575886
   ],
   "bias": 0.19083612829231808,
+  "invertOutput": true,
   "training": {
     "accuracy": 0.7709874851557504,
     "loss": 0.523644905224631,
