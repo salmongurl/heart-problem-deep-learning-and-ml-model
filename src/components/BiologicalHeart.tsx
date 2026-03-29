@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useMemo, useEffect } from "react";
-import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
+import { Canvas, type ThreeEvent, useFrame } from "@react-three/fiber";
 import {
   Float,
   MeshTransmissionMaterial,

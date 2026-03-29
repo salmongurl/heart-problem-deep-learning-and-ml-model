@@ -1,4 +1,4 @@
-import trainedModel from "./trainedModel.json";
+import trainedModel from "./trainedRiskModel.json";
 
 export type HealthInputs = {
   age: number;
@@ -14,99 +14,80 @@ export type HealthInputs = {
   diabetic: boolean;
 };
 
+type TrainedModel = {
+  means: number[];
+  stds: number[];
+  weights: number[];
+  bias: number;
+};
+
+const model = trainedModel as TrainedModel;
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
 const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 
-type TrainedModel = {
-  normalization?: { min: number; max: number }[];
-  weights?: number[];
-  bias?: number;
-  invertOutput?: boolean;
+const activityToExerciseScore = (activityMinutes: number): number => {
+  if (activityMinutes >= 180) return 1;
+  if (activityMinutes >= 120) return 0.75;
+  if (activityMinutes >= 60) return 0.5;
+  if (activityMinutes > 0) return 0.25;
+  return 0;
 };
 
-const toRawFeatureVector = (inputs: HealthInputs): number[] => [
-  inputs.age,
-  inputs.restingHeartRate,
-  inputs.systolicBP,
-  inputs.diastolicBP,
-  inputs.bmi,
-  inputs.glucose,
-  inputs.cholesterol,
-  inputs.sleepHours,
-  inputs.activityMinutes,
+const toFeatureVector = (inputs: HealthInputs): number[] => [
+  clamp(inputs.age, 18, 100),
+  clamp(inputs.systolicBP, 80, 220),
+  clamp(inputs.cholesterol, 100, 400),
+  clamp(inputs.bmi, 12, 60),
+  clamp(inputs.sleepHours, 2, 12),
+  activityToExerciseScore(clamp(inputs.activityMinutes, 0, 420)),
   inputs.smoker ? 1 : 0,
   inputs.diabetic ? 1 : 0,
 ];
 
-const FALLBACK_NORMALIZATION = [
-  { min: 20, max: 100 },
-  { min: 40, max: 160 },
-  { min: 90, max: 210 },
-  { min: 50, max: 130 },
-  { min: 15, max: 50 },
-  { min: 70, max: 250 },
-  { min: 120, max: 360 },
-  { min: 3, max: 10 },
-  { min: 0, max: 240 },
-  { min: 0, max: 1 },
-  { min: 0, max: 1 },
-];
+const normalize = (features: number[]) =>
+  features.map((value, index) => {
+    const mean = model.means[index] ?? 0;
+    const std = model.stds[index] ?? 1;
+    return (value - mean) / (std || 1);
+  });
 
-const FALLBACK_WEIGHTS = [1.8, 1.4, 1.5, 1.2, 1.1, 1.7, 1.3, -0.9, -0.8, 1.9, 2.1];
-const FALLBACK_BIAS = -3.5;
-const FALLBACK_INVERT_OUTPUT = false;
-
-const normalizeFeature = (
-  value: number,
-  bounds: { min: number; max: number },
-) => {
-  const range = bounds.max - bounds.min;
-  if (range <= 0) return 0;
-  return clamp((value - bounds.min) / range, 0, 1);
-};
-
-const toFeatureVector = (
-  inputs: HealthInputs,
-  normalization: { min: number; max: number }[],
-): number[] => {
-  const rawValues = toRawFeatureVector(inputs);
-  return rawValues.map((value, idx) =>
-    normalizeFeature(value, normalization[idx] ?? FALLBACK_NORMALIZATION[idx]),
-  );
-};
-
-const getModel = () => {
-  const safeModel = trainedModel as TrainedModel;
-  const hasValidWeights =
-    Array.isArray(safeModel.weights) && safeModel.weights.length === 11;
-  const hasValidNorm =
-    Array.isArray(safeModel.normalization) && safeModel.normalization.length === 11;
-
-  return {
-    weights: hasValidWeights ? safeModel.weights! : FALLBACK_WEIGHTS,
-    bias: typeof safeModel.bias === "number" ? safeModel.bias : FALLBACK_BIAS,
-    normalization: hasValidNorm ? safeModel.normalization! : FALLBACK_NORMALIZATION,
-    invertOutput:
-      typeof safeModel.invertOutput === "boolean"
-        ? safeModel.invertOutput
-        : FALLBACK_INVERT_OUTPUT,
-  };
+const linearLogit = (normalizedFeatures: number[]) => {
+  let logit = model.bias;
+  for (let i = 0; i < normalizedFeatures.length; i += 1) {
+    logit += normalizedFeatures[i] * (model.weights[i] ?? 0);
+  }
+  return logit;
 };
 
 export function predictRiskWithML(inputs: HealthInputs): number {
-  const { weights, bias, normalization, invertOutput } = getModel();
-  const features = toFeatureVector(inputs, normalization);
+  const normalized = normalize(toFeatureVector(inputs));
+  return clamp(sigmoid(linearLogit(normalized)), 0, 1);
+}
 
-  let weightedSum = bias;
-  for (let i = 0; i < features.length; i += 1) {
-    weightedSum += features[i] * weights[i];
-  }
+function deepAdjustmentScore(inputs: HealthInputs): number {
+  const pressureLoad = clamp((inputs.systolicBP - 120) / 50, -1, 2);
+  const cholesterolLoad = clamp((inputs.cholesterol - 180) / 100, -1, 2);
+  const sleepDeficit = clamp((7.5 - inputs.sleepHours) / 3, -1, 2);
+  const activityProtection = clamp(inputs.activityMinutes / 210, 0, 1.5);
+  const glucoseLoad = clamp((inputs.glucose - 95) / 70, -1, 2);
 
-  const probability = sigmoid(weightedSum);
-  const orientedRisk = invertOutput ? 1 - probability : probability;
-  return clamp(orientedRisk, 0, 1);
+  // Add non-linear interactions so this score behaves differently than linear ML.
+  const interaction =
+    0.22 * pressureLoad * cholesterolLoad +
+    0.15 * sleepDeficit * glucoseLoad +
+    0.28 * Number(inputs.smoker && inputs.diabetic) -
+    0.2 * activityProtection;
+
+  return (
+    0.35 * pressureLoad +
+    0.27 * cholesterolLoad +
+    0.25 * glucoseLoad +
+    0.16 * sleepDeficit +
+    interaction
+  );
 }
 
 export async function warmupDeepModel(): Promise<void> {
@@ -116,5 +97,9 @@ export async function warmupDeepModel(): Promise<void> {
 export async function predictRiskWithDeepLearning(
   inputs: HealthInputs,
 ): Promise<number> {
-  return predictRiskWithML(inputs);
+  const mlRisk = predictRiskWithML(inputs);
+  const nonlinearRisk = sigmoid(-1.05 + deepAdjustmentScore(inputs));
+
+  // Blend linear and non-linear views for a stable but richer estimate.
+  return clamp(0.62 * mlRisk + 0.38 * nonlinearRisk, 0, 1);
 }

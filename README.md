@@ -16,46 +16,6 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Train The ML Model With Your Dataset
-
-Place your CSV dataset in the project (example: `data/heart-dataset.csv`) and run:
-
-```bash
-npm run train:model -- data/heart-dataset.csv
-```
-
-To train on multiple CSV files at once:
-
-```bash
-npm run train:model -- data/dataset1/HeartDiseaseTrain-Test.csv data/dataset3/heart_disease.csv
-```
-
-This writes a trained model file to `src/lib/trainedModel.json`, which the website uses for risk prediction.
-
-Expected feature columns (common aliases are supported):
-
-- `age`
-- `restingHeartRate`
-- `systolicBP`
-- `diastolicBP`
-- `bmi`
-- `glucose`
-- `cholesterol`
-- `sleepHours`
-- `activityMinutes`
-- `smoker` (0/1, true/false, yes/no)
-- `diabetic` (0/1, true/false, yes/no)
-
-Target label column:
-
-- `label` (or one of: `target`, `heartDisease`, `diagnosis`, `output`, `class`)
-
-If your label column has a different name, pass it explicitly:
-
-```bash
-node scripts/train-model.mjs --input data/heart-dataset.csv --label my_target_column
-```
-
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

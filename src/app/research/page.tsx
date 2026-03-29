@@ -59,7 +59,7 @@ export default function ResearchPage() {
               Our baseline model utilizes a deterministic logistic regression
               approach. It applies generalized linear coefficients to input
               features such as age, BMI, and cholesterol to estimate
-              probability. It&apos;s fast, interpretable, and perfect for
+              probability. It is fast, interpretable, and perfect for
               understanding exactly how each metric contributes to the final
               score.
             </p>
@@ -113,11 +113,10 @@ export default function ResearchPage() {
                 Simulated Dataset Information
               </h2>
               <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-                Currently, this implementation utilizes a normalized set of
-                deterministic weights to simulate inferences locally within the
-                browser. The underlying network architecture demonstrates how
-                client-side AI can calculate localized risk structures without
-                passing sensitive medical data via an API.
+                The current implementation uses parameters trained from the
+                bundled heart disease dataset and runs inference directly in the
+                browser. This keeps predictions fast while avoiding transmission
+                of sensitive health data to an external inference service.
               </p>
 
               <div className="grid sm:grid-cols-3 gap-4">

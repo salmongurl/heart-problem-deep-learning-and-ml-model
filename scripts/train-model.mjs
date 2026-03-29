@@ -1,506 +1,301 @@
-import fs from "node:fs";
+import fs from "node:fs/promises";
 import path from "node:path";
 
-const FEATURE_ORDER = [
-  "age",
-  "restingHeartRate",
-  "systolicBP",
-  "diastolicBP",
-  "bmi",
-  "glucose",
-  "cholesterol",
-  "sleepHours",
-  "activityMinutes",
-  "smoker",
-  "diabetic",
-];
+const INPUT_CSV = path.resolve(
+	process.cwd(),
+	"data/dataset3/heart_disease.csv",
+);
+const OUTPUT_JSON = path.resolve(process.cwd(), "src/lib/trainedRiskModel.json");
 
-const COLUMN_ALIASES = {
-  age: ["age", "ageyears"],
-  restingHeartRate: ["restingheartrate", "heartrate", "restinghr", "hr"],
-  maxHeartRate: ["maxheartrate", "thalach"],
-  systolicBP: ["systolicbp", "systolic", "aphi", "bloodpressure", "restingbloodpressure"],
-  diastolicBP: ["diastolicbp", "diastolic", "aplo"],
-  bmi: ["bmi", "bodymassindex"],
-  glucose: ["glucose", "bloodglucose", "fastingbloodsugar"],
-  cholesterol: ["cholesterol", "serumcholesterol", "cholestoral", "cholesterollevel"],
-  sleepHours: ["sleephours", "sleep"],
-  activityMinutes: ["activityminutes", "physicalactivityminutes", "activity", "exerciseminutes"],
-  exerciseHabits: ["exercisehabits"],
-  smoker: ["smoker", "smoking", "issmoker"],
-  diabetic: ["diabetic", "diabetes", "isdiabetic"],
-  stressLevel: ["stresslevel"],
-  exerciseAngina: ["exerciseinducedangina"],
-};
+function parseCsvLine(line) {
+	const fields = [];
+	let current = "";
+	let inQuotes = false;
 
-const LABEL_ALIASES = [
-  "label",
-  "target",
-  "heartdisease",
-  "heartdiseasestatus",
-  "diagnosis",
-  "output",
-  "class",
-];
+	for (let i = 0; i < line.length; i += 1) {
+		const char = line[i];
 
-function parseArgs() {
-  const args = process.argv.slice(2);
-  const positional = [];
-  const result = {
-    input: "data/heart-dataset.csv",
-    output: "src/lib/trainedModel.json",
-    label: "",
-    epochs: 1600,
-    learningRate: 0.18,
-  };
+		if (char === '"') {
+			const next = line[i + 1];
+			if (inQuotes && next === '"') {
+				current += '"';
+				i += 1;
+			} else {
+				inQuotes = !inQuotes;
+			}
+			continue;
+		}
 
-  for (let i = 0; i < args.length; i += 1) {
-    const current = args[i];
-    const next = args[i + 1];
+		if (char === "," && !inQuotes) {
+			fields.push(current.trim());
+			current = "";
+			continue;
+		}
 
-    if (current === "--input" && next) {
-      result.input = next;
-      i += 1;
-      continue;
-    }
-    if (current === "--output" && next) {
-      result.output = next;
-      i += 1;
-      continue;
-    }
-    if (current === "--label" && next) {
-      result.label = next;
-      i += 1;
-      continue;
-    }
-    if (current === "--epochs" && next) {
-      result.epochs = Number(next);
-      i += 1;
-      continue;
-    }
-    if (current === "--lr" && next) {
-      result.learningRate = Number(next);
-      i += 1;
-      continue;
-    }
+		current += char;
+	}
 
-    if (!current.startsWith("--")) {
-      positional.push(current);
-    }
-  }
-
-  if (positional.length > 0) {
-    result.input = positional.join(",");
-  }
-
-  return result;
-}
-
-function normalizeHeader(header) {
-  return header.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function sanitizeValue(value) {
-  return (value ?? "").toString().trim();
-}
-
-function splitCsvLine(line) {
-  const values = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i];
-
-    if (char === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"';
-        i += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      values.push(current.trim());
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  values.push(current.trim());
-  return values;
-}
-
-function parseCsv(content) {
-  const lines = content
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-
-  if (lines.length < 2) {
-    throw new Error("CSV must include a header and at least one row.");
-  }
-
-  const headers = splitCsvLine(lines[0]);
-  const rows = lines.slice(1).map(splitCsvLine);
-
-  return { headers, rows };
+	fields.push(current.trim());
+	return fields;
 }
 
 function toNumber(value) {
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "true" || normalized === "yes") return 1;
-  if (normalized === "false" || normalized === "no") return 0;
-
-  const parsed = Number(value);
-  if (Number.isNaN(parsed)) {
-    throw new Error(`Cannot parse numeric value from \"${value}\".`);
-  }
-  return parsed;
+	if (value === "" || value == null) return Number.NaN;
+	const num = Number(value);
+	return Number.isFinite(num) ? num : Number.NaN;
 }
 
-function parseOptionalNumber(value) {
-  const cleaned = sanitizeValue(value);
-  if (!cleaned) return null;
-  try {
-    return toNumber(cleaned);
-  } catch {
-    return null;
-  }
+function toYesNo(value) {
+	return String(value).toLowerCase() === "yes" ? 1 : 0;
 }
 
-function parseBinary(value) {
-  const cleaned = sanitizeValue(value).toLowerCase();
-  if (!cleaned) return null;
-  if (["1", "yes", "true", "y", "positive", "high"].includes(cleaned)) return 1;
-  if (["0", "no", "false", "n", "negative", "low"].includes(cleaned)) return 0;
-
-  const numeric = Number(cleaned);
-  if (!Number.isNaN(numeric)) {
-    return numeric >= 1 ? 1 : 0;
-  }
-
-  return null;
+function exerciseToScore(value) {
+	const normalized = String(value).toLowerCase();
+	if (normalized === "high") return 1;
+	if (normalized === "medium") return 0.6;
+	if (normalized === "low") return 0.25;
+	return 0;
 }
 
-function getCell(row, aliases) {
-  for (const alias of aliases) {
-    const value = row[alias];
-    if (value !== undefined && sanitizeValue(value) !== "") {
-      return sanitizeValue(value);
-    }
-  }
-  return "";
-}
+function makeFeatureVector(rowByColumn) {
+	const age = toNumber(rowByColumn["Age"]);
+	const bloodPressure = toNumber(rowByColumn["Blood Pressure"]);
+	const cholesterol = toNumber(rowByColumn["Cholesterol Level"]);
+	const bmi = toNumber(rowByColumn["BMI"]);
+	const sleepHours = toNumber(rowByColumn["Sleep Hours"]);
 
-function activityFromHabit(habit) {
-  const value = sanitizeValue(habit).toLowerCase();
-  if (value === "high") return 220;
-  if (value === "medium") return 150;
-  if (value === "low") return 80;
-  return null;
-}
+	if (
+		[age, bloodPressure, cholesterol, bmi, sleepHours].some((x) =>
+			Number.isNaN(x),
+		)
+	) {
+		return null;
+	}
 
-function restingHeartRateFromStress(stress) {
-  const value = sanitizeValue(stress).toLowerCase();
-  if (value === "high") return 84;
-  if (value === "medium") return 75;
-  if (value === "low") return 68;
-  return 72;
-}
-
-function glucoseFromFastingText(rawFasting) {
-  const value = sanitizeValue(rawFasting).toLowerCase();
-  if (!value) return null;
-
-  const numeric = parseOptionalNumber(value);
-  if (numeric !== null) return numeric;
-
-  if (value.includes("greater") || value.includes(">")) return 140;
-  if (value.includes("lower") || value.includes("<")) return 100;
-
-  return null;
-}
-
-function buildFeatureRow(row) {
-  const age = parseOptionalNumber(getCell(row, COLUMN_ALIASES.age));
-  const systolicBP = parseOptionalNumber(getCell(row, COLUMN_ALIASES.systolicBP));
-  const cholesterol = parseOptionalNumber(getCell(row, COLUMN_ALIASES.cholesterol));
-
-  if (age === null || systolicBP === null || cholesterol === null) {
-    return null;
-  }
-
-  const diabeticFlag = parseBinary(getCell(row, COLUMN_ALIASES.diabetic));
-  const smokerFlag = parseBinary(getCell(row, COLUMN_ALIASES.smoker));
-  const glucoseRaw = getCell(row, COLUMN_ALIASES.glucose);
-  const glucoseFromText = glucoseFromFastingText(glucoseRaw);
-
-  const sleepHours =
-    parseOptionalNumber(getCell(row, COLUMN_ALIASES.sleepHours)) ?? 7;
-
-  const exerciseHabitMinutes = activityFromHabit(
-    getCell(row, COLUMN_ALIASES.exerciseHabits),
-  );
-
-  const activityMinutes =
-    parseOptionalNumber(getCell(row, COLUMN_ALIASES.activityMinutes)) ??
-    exerciseHabitMinutes ??
-    (parseBinary(getCell(row, COLUMN_ALIASES.exerciseAngina)) === 1 ? 60 : 140);
-
-  const maxHeartRate = parseOptionalNumber(getCell(row, COLUMN_ALIASES.maxHeartRate));
-  const restingHeartRate =
-    parseOptionalNumber(getCell(row, COLUMN_ALIASES.restingHeartRate)) ??
-    (maxHeartRate !== null ? Math.max(45, Math.min(100, 95 - 0.25 * maxHeartRate)) : null) ??
-    restingHeartRateFromStress(getCell(row, COLUMN_ALIASES.stressLevel));
-
-  const diastolicBP =
-    parseOptionalNumber(getCell(row, COLUMN_ALIASES.diastolicBP)) ??
-    Math.max(55, Math.min(130, Math.round(systolicBP * 0.65)));
-
-  const bmi =
-    parseOptionalNumber(getCell(row, COLUMN_ALIASES.bmi)) ??
-    Math.max(18, Math.min(42, 18 + (age - 20) * 0.12 + (cholesterol - 150) * 0.01));
-
-  const diabetic =
-    diabeticFlag ??
-    ((glucoseFromText ?? 0) >= 126 ? 1 : 0);
-
-  const glucose = glucoseFromText ?? (diabetic === 1 ? 145 : 95);
-  const smoker = smokerFlag ?? 0;
-
-  return [
-    age,
-    restingHeartRate,
-    systolicBP,
-    diastolicBP,
-    bmi,
-    glucose,
-    cholesterol,
-    sleepHours,
-    activityMinutes,
-    smoker,
-    diabetic,
-  ];
-}
-
-function parseLabel(row, explicitLabel) {
-  if (explicitLabel) {
-    const value = parseBinary(row[explicitLabel]);
-    return value;
-  }
-
-  for (const alias of LABEL_ALIASES) {
-    const value = parseBinary(row[alias]);
-    if (value !== null) {
-      return value;
-    }
-  }
-
-  return null;
+	return [
+		age,
+		bloodPressure,
+		cholesterol,
+		bmi,
+		sleepHours,
+		exerciseToScore(rowByColumn["Exercise Habits"]),
+		toYesNo(rowByColumn["Smoking"]),
+		toYesNo(rowByColumn["Diabetes"]),
+	];
 }
 
 function sigmoid(x) {
-  return 1 / (1 + Math.exp(-x));
+	return 1 / (1 + Math.exp(-x));
 }
 
-function dot(a, b) {
-  let total = 0;
-  for (let i = 0; i < a.length; i += 1) {
-    total += a[i] * b[i];
-  }
-  return total;
+function deterministicShuffle(items) {
+	let seed = 1337;
+	const rand = () => {
+		seed = (seed * 1664525 + 1013904223) >>> 0;
+		return seed / 4294967296;
+	};
+
+	const output = [...items];
+	for (let i = output.length - 1; i > 0; i -= 1) {
+		const j = Math.floor(rand() * (i + 1));
+		[output[i], output[j]] = [output[j], output[i]];
+	}
+	return output;
 }
 
-function trainLogisticRegression(samples, labels, epochs, learningRate) {
-  const featureCount = samples[0].length;
-  const weights = new Array(featureCount).fill(0);
-  let bias = 0;
-  let lastLoss = 0;
+function buildStandardizationStats(samples) {
+	const featureCount = samples[0].length;
+	const means = Array.from({ length: featureCount }, () => 0);
+	const stds = Array.from({ length: featureCount }, () => 1);
 
-  for (let epoch = 0; epoch < epochs; epoch += 1) {
-    const gradW = new Array(featureCount).fill(0);
-    let gradB = 0;
-    let loss = 0;
+	for (const row of samples) {
+		for (let i = 0; i < featureCount; i += 1) {
+			means[i] += row[i];
+		}
+	}
 
-    for (let i = 0; i < samples.length; i += 1) {
-      const x = samples[i];
-      const y = labels[i];
-      const z = dot(weights, x) + bias;
-      const p = sigmoid(z);
+	for (let i = 0; i < featureCount; i += 1) {
+		means[i] /= samples.length;
+	}
 
-      const clippedP = Math.min(1 - 1e-8, Math.max(1e-8, p));
-      loss += -(y * Math.log(clippedP) + (1 - y) * Math.log(1 - clippedP));
+	for (const row of samples) {
+		for (let i = 0; i < featureCount; i += 1) {
+			const delta = row[i] - means[i];
+			stds[i] += delta * delta;
+		}
+	}
 
-      const error = p - y;
-      for (let j = 0; j < featureCount; j += 1) {
-        gradW[j] += error * x[j];
-      }
-      gradB += error;
-    }
+	for (let i = 0; i < featureCount; i += 1) {
+		stds[i] = Math.sqrt(stds[i] / samples.length);
+		if (stds[i] < 1e-6) stds[i] = 1;
+	}
 
-    const invN = 1 / samples.length;
-    for (let j = 0; j < featureCount; j += 1) {
-      weights[j] -= learningRate * gradW[j] * invN;
-    }
-    bias -= learningRate * gradB * invN;
-
-    lastLoss = loss * invN;
-  }
-
-  return { weights, bias, loss: lastLoss };
+	return { means, stds };
 }
 
-function computeAccuracy(samples, labels, weights, bias) {
-  let correct = 0;
-
-  for (let i = 0; i < samples.length; i += 1) {
-    const prob = sigmoid(dot(weights, samples[i]) + bias);
-    const predicted = prob >= 0.5 ? 1 : 0;
-    if (predicted === labels[i]) {
-      correct += 1;
-    }
-  }
-
-  return correct / samples.length;
+function normalizeRow(row, means, stds) {
+	return row.map((value, i) => (value - means[i]) / stds[i]);
 }
 
-function scoreProbability(sample, weights, bias) {
-  return sigmoid(dot(weights, sample) + bias);
+function trainLogisticRegression({ xTrain, yTrain, lr, epochs, l2 }) {
+	const featureCount = xTrain[0].length;
+	const weights = Array.from({ length: featureCount }, () => 0);
+	let bias = 0;
+
+	for (let epoch = 0; epoch < epochs; epoch += 1) {
+		const gradW = Array.from({ length: featureCount }, () => 0);
+		let gradB = 0;
+
+		for (let i = 0; i < xTrain.length; i += 1) {
+			const x = xTrain[i];
+			const y = yTrain[i];
+			let z = bias;
+			for (let j = 0; j < featureCount; j += 1) {
+				z += weights[j] * x[j];
+			}
+
+			const pred = sigmoid(z);
+			const error = pred - y;
+
+			for (let j = 0; j < featureCount; j += 1) {
+				gradW[j] += error * x[j];
+			}
+			gradB += error;
+		}
+
+		for (let j = 0; j < featureCount; j += 1) {
+			const regularized = gradW[j] / xTrain.length + l2 * weights[j];
+			weights[j] -= lr * regularized;
+		}
+		bias -= lr * (gradB / xTrain.length);
+	}
+
+	return { weights, bias };
 }
 
-function normalizeWithBounds(values, normalization) {
-  return values.map((value, index) => {
-    const { min, max } = normalization[index];
-    return Math.max(0, Math.min(1, (value - min) / (max - min)));
-  });
+function evaluateModel({ x, y, weights, bias }) {
+	let correct = 0;
+	let totalLoss = 0;
+
+	for (let i = 0; i < x.length; i += 1) {
+		const row = x[i];
+		const label = y[i];
+		let z = bias;
+		for (let j = 0; j < row.length; j += 1) {
+			z += weights[j] * row[j];
+		}
+		const pred = Math.min(1 - 1e-8, Math.max(1e-8, sigmoid(z)));
+		const predictedClass = pred >= 0.5 ? 1 : 0;
+		if (predictedClass === label) correct += 1;
+		totalLoss += -(label * Math.log(pred) + (1 - label) * Math.log(1 - pred));
+	}
+
+	return {
+		accuracy: correct / x.length,
+		loss: totalLoss / x.length,
+	};
 }
 
-function main() {
-  const { input, output, label, epochs, learningRate } = parseArgs();
-  const outputPath = path.resolve(process.cwd(), output);
+async function main() {
+	const csv = await fs.readFile(INPUT_CSV, "utf8");
+	const lines = csv
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean);
 
-  const inputPaths = input
-    .split(",")
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0)
-    .map((item) => path.resolve(process.cwd(), item));
+	if (lines.length < 2) {
+		throw new Error("Dataset appears to be empty.");
+	}
 
-  if (inputPaths.length === 0) {
-    throw new Error("At least one CSV file is required in --input.");
-  }
+	const header = parseCsvLine(lines[0]);
+	const rows = [];
 
-  for (const inputPath of inputPaths) {
-    if (!fs.existsSync(inputPath)) {
-      throw new Error(`Input dataset not found: ${inputPath}`);
-    }
-  }
+	for (let i = 1; i < lines.length; i += 1) {
+		const cols = parseCsvLine(lines[i]);
+		if (cols.length !== header.length) continue;
 
-  const rawFeatures = [];
-  const labels = [];
-  let skippedRows = 0;
+		const rowByColumn = Object.fromEntries(header.map((h, idx) => [h, cols[idx]]));
+		const features = makeFeatureVector(rowByColumn);
+		const labelText = rowByColumn["Heart Disease Status"];
+		const label = String(labelText).toLowerCase() === "yes" ? 1 : 0;
 
-  for (const inputPath of inputPaths) {
-    const raw = fs.readFileSync(inputPath, "utf8");
-    const { headers, rows } = parseCsv(raw);
-    const normalizedHeaders = headers.map(normalizeHeader);
+		if (!features || Number.isNaN(label)) continue;
+		rows.push({ features, label });
+	}
 
-    const rowObjects = rows.map((rowValues) => {
-      const rowObject = {};
-      for (let i = 0; i < normalizedHeaders.length; i += 1) {
-        rowObject[normalizedHeaders[i]] = sanitizeValue(rowValues[i]);
-      }
-      return rowObject;
-    });
+	if (rows.length < 100) {
+		throw new Error(`Insufficient valid rows after cleaning: ${rows.length}`);
+	}
 
-    const explicitLabel = label ? normalizeHeader(label) : "";
+	const shuffled = deterministicShuffle(rows);
+	const split = Math.floor(shuffled.length * 0.8);
+	const trainRows = shuffled.slice(0, split);
+	const testRows = shuffled.slice(split);
 
-    for (const row of rowObjects) {
-      const features = buildFeatureRow(row);
-      const target = parseLabel(row, explicitLabel);
+	const xTrainRaw = trainRows.map((r) => r.features);
+	const yTrain = trainRows.map((r) => r.label);
+	const xTestRaw = testRows.map((r) => r.features);
+	const yTest = testRows.map((r) => r.label);
 
-      if (!features || target === null) {
-        skippedRows += 1;
-        continue;
-      }
+	const { means, stds } = buildStandardizationStats(xTrainRaw);
+	const xTrain = xTrainRaw.map((row) => normalizeRow(row, means, stds));
+	const xTest = xTestRaw.map((row) => normalizeRow(row, means, stds));
 
-      rawFeatures.push(features);
-      labels.push(target);
-    }
-  }
+	const model = trainLogisticRegression({
+		xTrain,
+		yTrain,
+		lr: 0.06,
+		epochs: 2200,
+		l2: 0.0015,
+	});
 
-  if (rawFeatures.length < 20) {
-    throw new Error("Need at least 20 valid rows to train a stable model.");
-  }
+	const trainMetrics = evaluateModel({
+		x: xTrain,
+		y: yTrain,
+		weights: model.weights,
+		bias: model.bias,
+	});
+	const testMetrics = evaluateModel({
+		x: xTest,
+		y: yTest,
+		weights: model.weights,
+		bias: model.bias,
+	});
 
-  const normalization = FEATURE_ORDER.map((_, featureIdx) => {
-    const values = rawFeatures.map((row) => row[featureIdx]);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    return { min, max: max === min ? min + 1 : max };
-  });
+	const output = {
+		version: 1,
+		trainedAt: new Date().toISOString(),
+		sourceDataset: "data/dataset3/heart_disease.csv",
+		featureNames: [
+			"age",
+			"bloodPressure",
+			"cholesterol",
+			"bmi",
+			"sleepHours",
+			"exerciseScore",
+			"smoker",
+			"diabetic",
+		],
+		means,
+		stds,
+		weights: model.weights,
+		bias: model.bias,
+		metrics: {
+			train: trainMetrics,
+			test: testMetrics,
+			rowsUsed: rows.length,
+		},
+	};
 
-  const normalizedSamples = rawFeatures.map((row) =>
-    row.map((value, index) => {
-      const { min, max } = normalization[index];
-      return Math.max(0, Math.min(1, (value - min) / (max - min)));
-    }),
-  );
+	await fs.writeFile(OUTPUT_JSON, JSON.stringify(output, null, 2), "utf8");
 
-  const { weights, bias, loss } = trainLogisticRegression(
-    normalizedSamples,
-    labels,
-    epochs,
-    learningRate,
-  );
-
-  const accuracy = computeAccuracy(normalizedSamples, labels, weights, bias);
-
-  // Clinical orientation check: adverse profile should score higher than healthy profile.
-  const healthyAnchor = [25, 58, 105, 68, 20, 90, 160, 8.5, 210, 0, 0];
-  const adverseAnchor = [75, 95, 190, 115, 38, 180, 420, 4.5, 20, 1, 1];
-  const healthyNorm = normalizeWithBounds(healthyAnchor, normalization);
-  const adverseNorm = normalizeWithBounds(adverseAnchor, normalization);
-  const healthyProb = scoreProbability(healthyNorm, weights, bias);
-  const adverseProb = scoreProbability(adverseNorm, weights, bias);
-  const invertOutput = adverseProb < healthyProb;
-
-  const modelFile = {
-    version: 1,
-    trainedAt: new Date().toISOString(),
-    samples: normalizedSamples.length,
-    featureOrder: FEATURE_ORDER,
-    normalization,
-    weights,
-    bias,
-    invertOutput,
-    training: {
-      accuracy,
-      loss,
-      epochs,
-      learningRate,
-    },
-  };
-
-  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-  fs.writeFileSync(outputPath, JSON.stringify(modelFile, null, 2));
-
-  console.log(`Model trained using ${normalizedSamples.length} rows.`);
-  console.log(`Skipped rows: ${skippedRows}`);
-  console.log(`Accuracy: ${(accuracy * 100).toFixed(2)}%`);
-  console.log(`Healthy anchor probability: ${healthyProb.toFixed(4)}`);
-  console.log(`Adverse anchor probability: ${adverseProb.toFixed(4)}`);
-  console.log(`Output inverted for risk semantics: ${invertOutput}`);
-  console.log(`Saved to: ${outputPath}`);
+	console.log("Saved trained model to", OUTPUT_JSON);
+	console.log(
+		`Train accuracy ${(trainMetrics.accuracy * 100).toFixed(2)}%, Test accuracy ${(testMetrics.accuracy * 100).toFixed(2)}%`,
+	);
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-}
+main().catch((error) => {
+	console.error(error);
+	process.exitCode = 1;
+});

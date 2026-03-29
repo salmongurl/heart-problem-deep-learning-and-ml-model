@@ -44,7 +44,7 @@ export default function HomePage() {
             </div>
 
             <h1 className="text-5xl md:text-7xl font-black tracking-tight text-gray-900 leading-tight font-headline">
-              The Future of {" "}
+              The Future of{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-600 via-red-600 to-rose-700">
                 Cardiac Health Risk
               </span>
@@ -117,7 +117,6 @@ export default function HomePage() {
             ))}
           </motion.div>
         </div>
-
       </motion.div>
     </div>
   );
