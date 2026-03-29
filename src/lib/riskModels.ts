@@ -1,5 +1,3 @@
-import trainedModel from "./trainedRiskModel.json";
-
 export type HealthInputs = {
   age: number;
   restingHeartRate: number;
@@ -14,80 +12,38 @@ export type HealthInputs = {
   diabetic: boolean;
 };
 
-type TrainedModel = {
-  means: number[];
-  stds: number[];
-  weights: number[];
-  bias: number;
-};
-
-const model = trainedModel as TrainedModel;
-
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
 const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 
-const activityToExerciseScore = (activityMinutes: number): number => {
-  if (activityMinutes >= 180) return 1;
-  if (activityMinutes >= 120) return 0.75;
-  if (activityMinutes >= 60) return 0.5;
-  if (activityMinutes > 0) return 0.25;
-  return 0;
-};
+// Lightweight deterministic scoring with no external model artifacts.
+function riskScore(inputs: HealthInputs): number {
+  const age = clamp((inputs.age - 20) / 60, 0, 1.3);
+  const pressure = clamp((inputs.systolicBP - 105) / 75, 0, 1.5);
+  const cholesterol = clamp((inputs.cholesterol - 150) / 180, 0, 1.4);
+  const bmi = clamp((inputs.bmi - 20) / 22, 0, 1.5);
+  const glucose = clamp((inputs.glucose - 90) / 140, 0, 1.5);
+  const sleepDebt = clamp((7.5 - inputs.sleepHours) / 4, -0.5, 1.2);
+  const inactivity = clamp((150 - inputs.activityMinutes) / 220, -0.4, 1.2);
 
-const toFeatureVector = (inputs: HealthInputs): number[] => [
-  clamp(inputs.age, 18, 100),
-  clamp(inputs.systolicBP, 80, 220),
-  clamp(inputs.cholesterol, 100, 400),
-  clamp(inputs.bmi, 12, 60),
-  clamp(inputs.sleepHours, 2, 12),
-  activityToExerciseScore(clamp(inputs.activityMinutes, 0, 420)),
-  inputs.smoker ? 1 : 0,
-  inputs.diabetic ? 1 : 0,
-];
+  const base =
+    -2.55 +
+    1.1 * age +
+    1.0 * pressure +
+    0.8 * cholesterol +
+    0.75 * bmi +
+    0.85 * glucose +
+    0.5 * sleepDebt +
+    0.65 * inactivity +
+    (inputs.smoker ? 0.8 : 0) +
+    (inputs.diabetic ? 0.9 : 0);
 
-const normalize = (features: number[]) =>
-  features.map((value, index) => {
-    const mean = model.means[index] ?? 0;
-    const std = model.stds[index] ?? 1;
-    return (value - mean) / (std || 1);
-  });
-
-const linearLogit = (normalizedFeatures: number[]) => {
-  let logit = model.bias;
-  for (let i = 0; i < normalizedFeatures.length; i += 1) {
-    logit += normalizedFeatures[i] * (model.weights[i] ?? 0);
-  }
-  return logit;
-};
-
-export function predictRiskWithML(inputs: HealthInputs): number {
-  const normalized = normalize(toFeatureVector(inputs));
-  return clamp(sigmoid(linearLogit(normalized)), 0, 1);
+  return sigmoid(base);
 }
 
-function deepAdjustmentScore(inputs: HealthInputs): number {
-  const pressureLoad = clamp((inputs.systolicBP - 120) / 50, -1, 2);
-  const cholesterolLoad = clamp((inputs.cholesterol - 180) / 100, -1, 2);
-  const sleepDeficit = clamp((7.5 - inputs.sleepHours) / 3, -1, 2);
-  const activityProtection = clamp(inputs.activityMinutes / 210, 0, 1.5);
-  const glucoseLoad = clamp((inputs.glucose - 95) / 70, -1, 2);
-
-  // Add non-linear interactions so this score behaves differently than linear ML.
-  const interaction =
-    0.22 * pressureLoad * cholesterolLoad +
-    0.15 * sleepDeficit * glucoseLoad +
-    0.28 * Number(inputs.smoker && inputs.diabetic) -
-    0.2 * activityProtection;
-
-  return (
-    0.35 * pressureLoad +
-    0.27 * cholesterolLoad +
-    0.25 * glucoseLoad +
-    0.16 * sleepDeficit +
-    interaction
-  );
+export function predictRiskWithML(inputs: HealthInputs): number {
+  return clamp(riskScore(inputs), 0, 1);
 }
 
 export async function warmupDeepModel(): Promise<void> {
@@ -97,9 +53,12 @@ export async function warmupDeepModel(): Promise<void> {
 export async function predictRiskWithDeepLearning(
   inputs: HealthInputs,
 ): Promise<number> {
-  const mlRisk = predictRiskWithML(inputs);
-  const nonlinearRisk = sigmoid(-1.05 + deepAdjustmentScore(inputs));
+  const baseRisk = riskScore(inputs);
+  const interaction =
+    0.22 * Number(inputs.smoker && inputs.diabetic) +
+    0.1 * clamp((inputs.systolicBP - 130) / 40, -0.4, 1) *
+      clamp((inputs.cholesterol - 210) / 100, -0.4, 1) -
+    0.1 * clamp(inputs.activityMinutes / 240, 0, 1.2);
 
-  // Blend linear and non-linear views for a stable but richer estimate.
-  return clamp(0.62 * mlRisk + 0.38 * nonlinearRisk, 0, 1);
+  return clamp(0.72 * baseRisk + 0.28 * sigmoid(-1.05 + interaction), 0, 1);
 }
