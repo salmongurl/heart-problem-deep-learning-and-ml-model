@@ -85,7 +85,9 @@ function standardizeFeatures(matrix) {
 }
 
 function applyStandardization(matrix, means, stds) {
-  return matrix.map((row) => row.map((value, idx) => (value - means[idx]) / stds[idx]));
+  return matrix.map((row) =>
+    row.map((value, idx) => (value - means[idx]) / stds[idx]),
+  );
 }
 
 function initMatrix(rows, cols, rand, scale = 0.1) {
@@ -311,7 +313,11 @@ function main() {
 
   const standardized = standardizeFeatures(xTrainRaw);
   const xTrain = standardized.transformed;
-  const xTest = applyStandardization(xTestRaw, standardized.means, standardized.stds);
+  const xTest = applyStandardization(
+    xTestRaw,
+    standardized.means,
+    standardized.stds,
+  );
 
   const model = trainMLP(xTrain, yTrain, {
     h1: 16,
