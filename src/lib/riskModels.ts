@@ -21,12 +21,38 @@ const clamp = (value: number, min: number, max: number) =>
 const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 const relu = (x: number) => (x > 0 ? x : 0);
 
-function baseDatasetProbability(inputs: HealthInputs): number {
-  const fastingBS = Number(inputs.diabetic || inputs.glucose >= 120);
-  const rawFeatures = [inputs.age, inputs.systolicBP, inputs.cholesterol, fastingBS];
+function featureValueFromInputs(
+  inputs: HealthInputs,
+  featureName: string,
+): number {
+  switch (featureName) {
+    case "Age":
+      return inputs.age;
+    case "BMI":
+      return inputs.bmi;
+    case "Smoking":
+      return Number(inputs.smoker);
+    case "Diabetic":
+      return Number(inputs.diabetic || inputs.glucose >= 120);
+    case "PhysicalActivity":
+      return Number(inputs.activityMinutes >= 150);
+    case "SleepTime":
+      return inputs.sleepHours;
+    case "RestingBP":
+      return inputs.systolicBP;
+    case "Cholesterol":
+      return inputs.cholesterol;
+    case "FastingBS":
+      return Number(inputs.diabetic || inputs.glucose >= 120);
+    default:
+      return 0;
+  }
+}
 
-  const standardized = rawFeatures.map((value, idx) => {
-    const mean = trainedHeartModel.means[idx];
+function baseDatasetProbability(inputs: HealthInputs): number {
+  const standardized = trainedHeartModel.featureNames.map((featureName, idx) => {
+    const value = featureValueFromInputs(inputs, featureName);
+    const mean = trainedHeartModel.means[idx] ?? 0;
     const std = trainedHeartModel.stds[idx] || 1;
     return (value - mean) / std;
   });
@@ -42,12 +68,22 @@ function baseDatasetProbability(inputs: HealthInputs): number {
 function riskScore(inputs: HealthInputs): number {
   const base = baseDatasetProbability(inputs);
 
+  // If the trained model already includes lifestyle fields (2020 schema),
+  // use the model output directly and avoid applying manual boosts twice.
+  if (trainedHeartModel.featureNames.includes("BMI")) {
+    return clamp(base, 0, 1);
+  }
+
   // Lifestyle factors are not part of the source CSV, so we calibrate them
   // as bounded adjustments on top of the trained clinical core model.
   const smokerBoost = inputs.smoker ? 0.09 : 0;
   const bmiBoost = clamp((inputs.bmi - 27) / 35, -0.06, 0.14);
   const sleepBoost = clamp((7 - inputs.sleepHours) / 18, -0.05, 0.08);
-  const inactivityBoost = clamp((120 - inputs.activityMinutes) / 420, -0.08, 0.1);
+  const inactivityBoost = clamp(
+    (120 - inputs.activityMinutes) / 420,
+    -0.08,
+    0.1,
+  );
   const glucoseBoost = clamp((inputs.glucose - 110) / 500, -0.02, 0.08);
 
   return clamp(
@@ -67,7 +103,12 @@ export async function warmupDeepModel(): Promise<void> {
 
 function deepDatasetProbability(inputs: HealthInputs): number {
   const fastingBS = Number(inputs.diabetic || inputs.glucose >= 120);
-  const rawFeatures = [inputs.age, inputs.systolicBP, inputs.cholesterol, fastingBS];
+  const rawFeatures = [
+    inputs.age,
+    inputs.systolicBP,
+    inputs.cholesterol,
+    fastingBS,
+  ];
 
   const x = rawFeatures.map((value, idx) => {
     const mean = trainedDeepHeartModel.means[idx];
@@ -109,10 +150,13 @@ export async function predictRiskWithDeepLearning(
   const smokerBoost = inputs.smoker ? 0.1 : 0;
   const bmiBoost = clamp((inputs.bmi - 27) / 34, -0.06, 0.15);
   const sleepBoost = clamp((7 - inputs.sleepHours) / 18, -0.05, 0.08);
-  const inactivityBoost = clamp((120 - inputs.activityMinutes) / 390, -0.08, 0.11);
+  const inactivityBoost = clamp(
+    (120 - inputs.activityMinutes) / 390,
+    -0.08,
+    0.11,
+  );
   const glucoseBoost = clamp((inputs.glucose - 110) / 480, -0.02, 0.09);
-  const diabetesSmokerInteraction =
-    inputs.diabetic && inputs.smoker ? 0.03 : 0;
+  const diabetesSmokerInteraction = inputs.diabetic && inputs.smoker ? 0.03 : 0;
 
   return clamp(
     deepCore +
