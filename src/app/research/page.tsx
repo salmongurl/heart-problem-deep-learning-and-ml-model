@@ -56,12 +56,12 @@ export default function ResearchPage() {
               </h2>
             </div>
             <p className="text-gray-600 text-sm leading-relaxed">
-              Our baseline model utilizes a deterministic logistic regression
-              approach. It applies generalized linear coefficients to input
-              features such as age, BMI, and cholesterol to estimate
-              probability. It is fast, interpretable, and perfect for
-              understanding exactly how each metric contributes to the final
-              score.
+              Our baseline model is logistic regression trained from the
+              bundled heart disease CSV. It learns coefficients for age,
+              resting blood pressure, cholesterol, and fasting blood sugar,
+              then performs low-latency inference directly in the browser.
+              The result is interpretable and reproducible while still being
+              fast enough for live UI updates.
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
               <span className="px-3 py-1 bg-gray-100 text-xs font-bold text-gray-600 rounded-md">
@@ -83,11 +83,11 @@ export default function ResearchPage() {
               </h2>
             </div>
             <p className="text-gray-600 text-sm leading-relaxed">
-              Built on TensorFlow.js, our sequential model utilizes hidden
-              layers with ReLU activation to capture complex non-linear
-              relationships that classical ML misses. For example, it can detect
-              compounded risks when age, smoking status, and high BMI combine in
-              specific, non-linear ways.
+              A secondary non-linear estimator is layered on top of the trained
+              logistic baseline to approximate interaction effects among
+              lifestyle factors like smoking, activity level, sleep, and
+              glucose. This gives a deep-like comparison score without
+              requiring heavyweight runtime model files.
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
               <span className="px-3 py-1 bg-indigo-50 text-xs font-bold text-indigo-700 rounded-md">
@@ -126,25 +126,25 @@ export default function ResearchPage() {
                     Architecture
                   </div>
                   <div className="text-sm font-semibold text-gray-800">
-                    Sequential Net
+                    Trained Logistic + Calibrated Non-linear Head
                   </div>
                 </div>
                 <div className="bg-white/50 p-4 rounded-xl border border-gray-100">
                   <Network className="w-5 h-5 text-gray-400 mb-2" />
                   <div className="text-xs text-gray-500 font-bold uppercase mb-1">
-                    Hidden Layers
+                    Dataset
                   </div>
                   <div className="text-sm font-semibold text-gray-800">
-                    2 (16 / 8 nodes)
+                    UCI Heart (918 rows)
                   </div>
                 </div>
                 <div className="bg-white/50 p-4 rounded-xl border border-gray-100">
                   <Activity className="w-5 h-5 text-gray-400 mb-2" />
                   <div className="text-xs text-gray-500 font-bold uppercase mb-1">
-                    Output Layer
+                    Inference
                   </div>
                   <div className="text-sm font-semibold text-gray-800">
-                    1 (Sigmoid)
+                    Browser-side, no external API
                   </div>
                 </div>
               </div>

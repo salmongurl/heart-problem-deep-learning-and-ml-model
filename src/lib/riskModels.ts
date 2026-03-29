@@ -1,3 +1,5 @@
+import { trainedHeartModel } from "./trainedHeartModel";
+
 export type HealthInputs = {
   age: number;
   restingHeartRate: number;
@@ -17,29 +19,40 @@ const clamp = (value: number, min: number, max: number) =>
 
 const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 
-// Lightweight deterministic scoring with no external model artifacts.
+function baseDatasetProbability(inputs: HealthInputs): number {
+  const fastingBS = Number(inputs.diabetic || inputs.glucose >= 120);
+  const rawFeatures = [inputs.age, inputs.systolicBP, inputs.cholesterol, fastingBS];
+
+  const standardized = rawFeatures.map((value, idx) => {
+    const mean = trainedHeartModel.means[idx];
+    const std = trainedHeartModel.stds[idx] || 1;
+    return (value - mean) / std;
+  });
+
+  let logit = trainedHeartModel.bias;
+  for (let i = 0; i < standardized.length; i += 1) {
+    logit += standardized[i] * trainedHeartModel.weights[i];
+  }
+
+  return sigmoid(logit);
+}
+
 function riskScore(inputs: HealthInputs): number {
-  const age = clamp((inputs.age - 20) / 60, 0, 1.3);
-  const pressure = clamp((inputs.systolicBP - 105) / 75, 0, 1.5);
-  const cholesterol = clamp((inputs.cholesterol - 150) / 180, 0, 1.4);
-  const bmi = clamp((inputs.bmi - 20) / 22, 0, 1.5);
-  const glucose = clamp((inputs.glucose - 90) / 140, 0, 1.5);
-  const sleepDebt = clamp((7.5 - inputs.sleepHours) / 4, -0.5, 1.2);
-  const inactivity = clamp((150 - inputs.activityMinutes) / 220, -0.4, 1.2);
+  const base = baseDatasetProbability(inputs);
 
-  const base =
-    -2.55 +
-    1.1 * age +
-    1.0 * pressure +
-    0.8 * cholesterol +
-    0.75 * bmi +
-    0.85 * glucose +
-    0.5 * sleepDebt +
-    0.65 * inactivity +
-    (inputs.smoker ? 0.8 : 0) +
-    (inputs.diabetic ? 0.9 : 0);
+  // Lifestyle factors are not part of the source CSV, so we calibrate them
+  // as bounded adjustments on top of the trained clinical core model.
+  const smokerBoost = inputs.smoker ? 0.09 : 0;
+  const bmiBoost = clamp((inputs.bmi - 27) / 35, -0.06, 0.14);
+  const sleepBoost = clamp((7 - inputs.sleepHours) / 18, -0.05, 0.08);
+  const inactivityBoost = clamp((120 - inputs.activityMinutes) / 420, -0.08, 0.1);
+  const glucoseBoost = clamp((inputs.glucose - 110) / 500, -0.02, 0.08);
 
-  return sigmoid(base);
+  return clamp(
+    base + smokerBoost + bmiBoost + sleepBoost + inactivityBoost + glucoseBoost,
+    0,
+    1,
+  );
 }
 
 export function predictRiskWithML(inputs: HealthInputs): number {
