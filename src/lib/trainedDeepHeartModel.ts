@@ -341,7 +341,7 @@ export const trainedDeepHeartModel: TrainedDeepHeartModelArtifact = {
   ],
   "b3": -0.009502168446381923,
   "metadata": {
-    "trainedAt": "2026-03-29T09:08:56.731Z",
+    "trainedAt": "2026-03-30T09:53:06.624Z",
     "datasetRows": 918,
     "split": "80/20",
     "trainLoss": 0.5943,

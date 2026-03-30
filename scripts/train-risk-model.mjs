@@ -3,7 +3,7 @@ import path from "node:path";
 
 const datasetPath = process.env.DATASET_FILE
   ? path.resolve(process.env.DATASET_FILE)
-  : path.resolve("data/dataset_uploaded/heart_2020_cleaned.csv");
+  : path.resolve("data/dataset_uploaded/heart.csv");
 const outputPath = path.resolve("src/lib/trainedHeartModel.ts");
 
 function parseCsv(filePath) {
@@ -40,7 +40,9 @@ const AGE_CATEGORY_MIDPOINT = {
 };
 
 function toBinary(value) {
-  const v = String(value ?? "").trim().toLowerCase();
+  const v = String(value ?? "")
+    .trim()
+    .toLowerCase();
   if (v === "1" || v === "yes" || v === "true") return 1;
   if (v.includes("borderline")) return 1;
   return 0;

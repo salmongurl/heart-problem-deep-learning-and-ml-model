@@ -42,7 +42,7 @@ export const trainedHeartModel: TrainedHeartModelArtifact = {
   ],
   "bias": 0.0008712960090029815,
   "metadata": {
-    "trainedAt": "2026-03-29T09:08:46.357Z",
+    "trainedAt": "2026-03-30T09:54:09.160Z",
     "datasetRows": 918,
     "split": "80/20",
     "trainAccuracy": 0.6403,
